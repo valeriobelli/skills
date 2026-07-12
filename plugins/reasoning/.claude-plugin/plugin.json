@@ -1,0 +1,8 @@
+{
+  "name": "reasoning",
+  "version": "0.1.0",
+  "description": "Planning and decision-quality skills. Includes council, an adversarial multi-agent debate skill that stress-tests high-stakes plans.",
+  "author": {
+    "name": "Valerio Belli"
+  }
+}

@@ -63,11 +63,15 @@ ln -s ~/src/skills/skills/council ~/.agents/skills/council   # OpenCode also rea
 ## Repository layout
 
 ```
-skills/<name>/SKILL.md   canonical, open-standard skills (source of truth)
-.claude-plugin/          Claude Code marketplace catalog (themed bundles)
-plugins/                 non-skill plugin components (commands/agents/hooks/mcp), added as needed
+skills/<name>/SKILL.md   canonical, open-standard skills (SOURCE OF TRUTH)
+bundles.json             which skills belong to which themed Claude bundle (hand-edited)
+scripts/sync-bundles.mjs regenerates the Claude mirror from skills/ + bundles.json
+.claude-plugin/          GENERATED Claude Code marketplace catalog
+plugins/<bundle>/        GENERATED per-bundle mirror (claude.ai scopes plugins by source subtree)
 templates/               scaffold for new skills
 ```
+
+`.claude-plugin/` and `plugins/` are generated — edit `skills/` and `bundles.json`, then run `make sync`. The CLIs (`npx skills`, Copilot, OpenCode) read `skills/` directly and never touch the generated mirror.
 
 ## Contributing
 

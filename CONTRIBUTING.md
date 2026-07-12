@@ -20,20 +20,39 @@
 
 4. Register it in a themed bundle (below) so it's installable via the Claude marketplace.
 
+## Source of truth vs. generated
+
+The `skills/` tree is the **only** place skill content lives — it's the flat, open-standard source every CLI agent reads (`npx skills`, Copilot, OpenCode, …).
+
+`plugins/` and `.claude-plugin/marketplace.json` are **generated** and must never be hand-edited. They exist only for **claude.ai**, which scopes a plugin's skills by scanning `<source>/skills/` and ignores the marketplace `skills` filter — so each bundle needs its own `source` subtree. [`scripts/sync-bundles.mjs`](scripts/sync-bundles.mjs) mirrors the canonical skills into per-bundle subtrees from a single hand-edited manifest, [`bundles.json`](bundles.json).
+
 ## Add / extend a themed plugin bundle
 
-Bundles group related skills (and, later, commands/agents/hooks/MCP) into one installable Claude Code plugin. Edit [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json):
+Edit [`bundles.json`](bundles.json) — **not** `marketplace.json`:
 
-- Add your skill path to an existing bundle's `skills` array, **or**
-- Add a new object to `plugins[]`: `name`, `description`, `source: "./"`, `strict: false`, `version`, `keywords`, and a `skills` array of `./skills/<name>` paths.
+- Add the skill's folder name to an existing bundle's `skills` array, **or**
+- Add a new object to `bundles[]`: `name`, `description`, `version`, `keywords`, and a `skills` array of bare skill folder names (e.g. `"council"`, which resolves to `skills/council`).
 
-When a bundle needs non-skill components, create `plugins/<bundle>/` with a `.claude-plugin/plugin.json` and root-level `commands/`, `agents/`, `hooks/`, and/or `.mcp.json` (these dirs sit at the plugin root, **not** inside `.claude-plugin/`).
+Then regenerate the mirror:
+
+```bash
+make sync          # or: node scripts/sync-bundles.mjs
+```
+
+A skill may belong to more than one bundle, or to none (it still installs via `npx skills`; it's just absent from the Claude marketplace). Commit the regenerated `plugins/**` and `marketplace.json` alongside your change.
 
 ## Validate before committing
 
 ```bash
-claude plugin validate .        # marketplace + skill schema
-npx skills add . --list         # confirm skills are discovered with descriptions
+make validate          # runs the three checks below
 ```
 
-Also confirm each `SKILL.md` frontmatter has `name` matching its folder and a non-empty `description`.
+or individually:
+
+```bash
+make check             # generated mirror is in lockstep with skills/ + bundles.json
+claude plugin validate .   # marketplace + plugin.json + skill schema
+npx skills add . --list    # confirm skills are discovered with descriptions
+```
+
+`make check` (and CI) fail if you edited a skill or `bundles.json` without re-running `make sync`. Also confirm each `SKILL.md` frontmatter has `name` matching its folder and a non-empty `description`.

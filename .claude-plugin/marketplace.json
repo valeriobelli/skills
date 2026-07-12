@@ -11,23 +11,28 @@
     {
       "name": "reasoning",
       "description": "Planning and decision-quality skills. Includes council, an adversarial multi-agent debate skill that stress-tests high-stakes plans.",
-      "source": "./",
+      "source": "./plugins/reasoning",
       "strict": false,
       "version": "0.1.0",
-      "keywords": ["planning", "reasoning", "debate", "review"],
-      "skills": [
-        "./skills/council"
+      "keywords": [
+        "planning",
+        "reasoning",
+        "debate",
+        "review"
       ]
     },
     {
       "name": "writing",
       "description": "Prose-quality skills. Includes human-style-writing, which strips LLM tics from text (Italian and English) on explicit request.",
-      "source": "./",
+      "source": "./plugins/writing",
       "strict": false,
       "version": "0.1.0",
-      "keywords": ["writing", "prose", "editing", "style", "de-llmify"],
-      "skills": [
-        "./skills/human-style-writing"
+      "keywords": [
+        "writing",
+        "prose",
+        "editing",
+        "style",
+        "de-llmify"
       ]
     }
   ]
