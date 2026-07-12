@@ -1,0 +1,34 @@
+{
+  "name": "valeriobelli-skills",
+  "owner": {
+    "name": "Valerio Belli"
+  },
+  "metadata": {
+    "description": "Cross-tool agent skills and Claude Code plugins",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "reasoning",
+      "description": "Planning and decision-quality skills. Includes council, an adversarial multi-agent debate skill that stress-tests high-stakes plans.",
+      "source": "./",
+      "strict": false,
+      "version": "0.1.0",
+      "keywords": ["planning", "reasoning", "debate", "review"],
+      "skills": [
+        "./skills/council"
+      ]
+    },
+    {
+      "name": "writing",
+      "description": "Prose-quality skills. Includes human-style-writing, which strips LLM tics from text (Italian and English) on explicit request.",
+      "source": "./",
+      "strict": false,
+      "version": "0.1.0",
+      "keywords": ["writing", "prose", "editing", "style", "de-llmify"],
+      "skills": [
+        "./skills/human-style-writing"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Node / tooling
+node_modules/
+*.log
+.serena
+
+# Editor
+.idea/
+*.swp
