@@ -2,10 +2,10 @@
 
 ## Add a skill
 
-1. Copy the scaffold:
+1. Pick the bundle it belongs to — `reasoning`, `writing`, or [a new one](#add-a-themed-plugin-bundle) — and copy the scaffold into it:
 
    ```bash
-   cp -r templates/skill-template skills/<your-skill-name>
+   cp -r templates/skill-template plugins/<bundle>/skills/<your-skill-name>
    ```
 
 2. Rules that keep the skill portable across tools:
@@ -18,41 +18,36 @@
 3. **Progressive disclosure** — keep `SKILL.md` lean. Push long material into sibling dirs the agent loads only when needed:
    - `references/` long-form docs · `scripts/` helpers · `templates/` fill-in files · `examples/` worked cases.
 
-4. Register it in a themed bundle (below) so it's installable via the Claude marketplace.
+4. That's the whole registration step — placing the folder inside a bundle is what makes the skill installable from the Claude marketplace. Then validate (below).
 
-## Source of truth vs. generated
+## Where skill content lives
 
-The `skills/` tree is the **only** place skill content lives — it's the flat, open-standard source every CLI agent reads (`npx skills`, Copilot, OpenCode, …).
+`plugins/<bundle>/skills/<name>/SKILL.md` is the **only** place skill content lives. There is no generated mirror and no build step — what you edit is what installs, so every file here is hand-edited.
 
-`plugins/` and `.claude-plugin/marketplace.json` are **generated** and must never be hand-edited. They exist only for **claude.ai**, which scopes a plugin's skills by scanning `<source>/skills/` and ignores the marketplace `skills` filter — so each bundle needs its own `source` subtree. [`scripts/sync-bundles.mjs`](scripts/sync-bundles.mjs) mirrors the canonical skills into per-bundle subtrees from a single hand-edited manifest, [`bundles.json`](bundles.json).
+The per-bundle nesting is required by **claude.ai**, which scopes a plugin's skills by scanning `<source>/skills/` and ignores the marketplace `skills` filter array — so each bundle needs its own `source` subtree. The CLI installers (`npx skills`, `gh skill`, Copilot, OpenCode) walk the repo and read the same `SKILL.md` files, so one tree serves both.
 
-## Add / extend a themed plugin bundle
+The tradeoff: a skill belongs to exactly one bundle. Listing it in two would mean two copies drifting apart — move it, or redraw the bundle boundaries instead.
 
-Edit [`bundles.json`](bundles.json) — **not** `marketplace.json`:
+## Add a themed plugin bundle
 
-- Add the skill's folder name to an existing bundle's `skills` array, **or**
-- Add a new object to `bundles[]`: `name`, `description`, `version`, `keywords`, and a `skills` array of bare skill folder names (e.g. `"council"`, which resolves to `skills/council`).
+Two manifests, both hand-edited:
 
-Then regenerate the mirror:
+1. `plugins/<bundle>/.claude-plugin/plugin.json` — `name` (must equal the directory name), `version`, `description`, `author`.
+2. [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) — append to `plugins[]`: `name`, `description`, `version`, `source` (`"./plugins/<bundle>"`), `strict: false`, `keywords`.
 
-```bash
-make sync          # or: node scripts/sync-bundles.mjs
-```
-
-A skill may belong to more than one bundle, or to none (it still installs via `npx skills`; it's just absent from the Claude marketplace). Commit the regenerated `plugins/**` and `marketplace.json` alongside your change.
+Keep `version` **identical** in both. At install time `plugin.json` wins and the marketplace entry's version is silently ignored, so a mismatch misleads anyone reading the catalog; `claude plugin validate .` warns when they diverge.
 
 ## Validate before committing
 
 ```bash
-make validate          # runs the three checks below
+make validate          # runs both checks below
 ```
 
 or individually:
 
 ```bash
-make check             # generated mirror is in lockstep with skills/ + bundles.json
 claude plugin validate .   # marketplace + plugin.json + skill schema
 npx skills add . --list    # confirm skills are discovered with descriptions
 ```
 
-`make check` (and CI) fail if you edited a skill or `bundles.json` without re-running `make sync`. Also confirm each `SKILL.md` frontmatter has `name` matching its folder and a non-empty `description`.
+Confirm each `SKILL.md` frontmatter has `name` matching its folder and a non-empty `description`.
