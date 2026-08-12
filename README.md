@@ -75,6 +75,16 @@ templates/               scaffold for new skills
 
 ## Contributing
 
+Run this once per clone, before your first commit:
+
+```bash
+make prepare-repo
+```
+
+It points git's `core.hooksPath` at [`.githooks/`](.githooks), whose `pre-commit` hook runs `make validate` — `claude plugin validate .` plus `npx skills add . --list` — so a malformed `SKILL.md` or bundle manifest is caught before it becomes a commit. That's stricter than CI, which can only run the `npx skills` half (no `claude` CLI on the runner).
+
+`core.hooksPath` is local git config and is never carried over by `git clone`, so every contributor and every fresh clone needs the command again. You can still run `make validate` on its own at any time, and `git commit --no-verify` bypasses the hook when you deliberately want to commit work in progress.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) to add a skill or a themed plugin bundle.
 
 ## License
