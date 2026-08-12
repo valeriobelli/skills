@@ -26,7 +26,7 @@
       "description": "Prose-quality skills. Includes human-style-writing, which strips LLM tics from text (Italian and English) on explicit request.",
       "source": "./plugins/writing",
       "strict": false,
-      "version": "0.1.0",
+      "version": "0.2.0",
       "keywords": [
         "writing",
         "prose",
