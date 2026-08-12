@@ -17,4 +17,4 @@ jobs:
 
       # Confirm skills are still discoverable with descriptions across CLI agents.
       - name: Skills discoverable via npx skills
-        run: npx --yes skills@1.5.16 add . --list
+        run: npx --yes skills@1.5.22 add . --list
