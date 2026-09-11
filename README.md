@@ -9,6 +9,7 @@ A *skill* is a folder with a `SKILL.md` — YAML frontmatter plus Markdown instr
 | Skill | Bundle | What it does |
 |-------|--------|--------------|
 | [`council`](plugins/reasoning/skills/council/SKILL.md) | `reasoning` | Adversarial multi-agent debate that stress-tests a high-stakes plan — multiple critics argue against it in parallel, a synthesizer keeps what survives. |
+| [`decompose`](plugins/reasoning/skills/decompose/SKILL.md) | `reasoning` | Turns one large or vague task into a set of small executable tasks — rough split, then one-question-at-a-time interrogation with the user, then writes the survivors to a board (Backlog.md or a task manager over MCP). |
 | [`human-style-writing`](plugins/writing/skills/human-style-writing/SKILL.md) | `writing` | Rewrites or generates prose (Italian & English) without LLM tics. Activates only on explicit request ("make this sound human", "de-llmify this"). |
 | [`stakeholder-summary`](plugins/writing/skills/stakeholder-summary/SKILL.md) | `writing` | Turns technical work into a short summary for a non-engineering reader — a ticket, release note, changelog entry, or status update. |
 
@@ -36,7 +37,7 @@ gh skill install valeriobelli/skills council
 
 ### Claude Code plugin marketplace
 
-Installs a themed bundle with `/plugin` — `reasoning` (`council`) or `writing` (`human-style-writing`, `stakeholder-summary`):
+Installs a themed bundle with `/plugin` — `reasoning` (`council`, `decompose`) or `writing` (`human-style-writing`, `stakeholder-summary`):
 
 ```
 /plugin marketplace add valeriobelli/skills
@@ -65,6 +66,7 @@ ln -s ~/src/skills/plugins/reasoning/skills/council ~/.agents/skills/council   #
 
 ```
 plugins/<bundle>/skills/<name>/SKILL.md     the skills themselves (SOURCE OF TRUTH)
+plugins/<bundle>/skills/<name>/references/  optional files a SKILL.md loads on demand
 plugins/<bundle>/.claude-plugin/plugin.json per-bundle Claude Code manifest
 .claude-plugin/marketplace.json             catalog listing every bundle
 templates/skill-template/                   scaffold for new skills
