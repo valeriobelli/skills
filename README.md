@@ -11,6 +11,7 @@ A *skill* is a folder with a `SKILL.md` — YAML frontmatter plus Markdown instr
 | [`council`](plugins/reasoning/skills/council/SKILL.md) | `reasoning` | Adversarial multi-agent debate that stress-tests a high-stakes plan — multiple critics argue against it in parallel, a synthesizer keeps what survives. |
 | [`decompose`](plugins/reasoning/skills/decompose/SKILL.md) | `reasoning` | Turns one large or vague task into a set of small executable tasks — rough split, then one-question-at-a-time interrogation with the user, then writes the survivors to a board (Backlog.md or a task manager over MCP). |
 | [`human-style-writing`](plugins/writing/skills/human-style-writing/SKILL.md) | `writing` | Rewrites or generates prose (Italian & English) without LLM tics. Activates only on explicit request ("make this sound human", "de-llmify this"). |
+| [`simplified-technical-english`](plugins/writing/skills/simplified-technical-english/SKILL.md) | `writing` | Rewrite the technical english using ASD-STE100 (Simplified Technical English) for a better human comprehension. |
 | [`stakeholder-summary`](plugins/writing/skills/stakeholder-summary/SKILL.md) | `writing` | Turns technical work into a short summary for a non-engineering reader — a ticket, release note, changelog entry, or status update. |
 
 ## Install
