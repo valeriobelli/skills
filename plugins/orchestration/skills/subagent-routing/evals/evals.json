@@ -7,7 +7,7 @@
       "expected_output": "Three lists of file paths with line numbers. The searches were delegated to subagents on the small tier without the user being asked anything about models.",
       "files": [],
       "expectations": [
-        "The subagent-routing skill was loaded before the first subagent was spawned, although the prompt mentions neither models nor subagents",
+        "The agent loaded the subagent-routing skill by itself before the first subagent was spawned, although the prompt mentions neither models nor subagents",
         "Every search subagent was spawned with a small-tier model parameter (the `haiku` alias in Claude Code, a small-tier `provider/model` reference in OpenCode)",
         "Exactly one line starting with `Routing:` was shown for the batch, naming the shape, the tier and the model",
         "The user was not asked any question before the subagents were spawned",
@@ -17,8 +17,8 @@
     },
     {
       "id": 2,
-      "prompt": "Use three subagents in parallel, one each for the council, decompose and human-style-writing skills. Each one extracts the `name` and `description` frontmatter fields and the list of files under `references/`, and returns them as a table row.",
-      "expected_output": "A three-row table with name, description and reference files per skill, produced by three subagents on the small tier.",
+      "prompt": "Use three subagents in parallel, one each for plugins/reasoning/skills/council/SKILL.md, plugins/reasoning/skills/decompose/SKILL.md and plugins/writing/skills/human-style-writing/SKILL.md. Each one extracts the `name` and `description` frontmatter fields from its file and returns them as a table row.",
+      "expected_output": "A three-row table with the name and description of each skill, produced by three subagents on the small tier.",
       "files": [],
       "expectations": [
         "All three subagents were spawned with a small-tier model parameter",
@@ -34,6 +34,7 @@
       "expected_output": "A recommendation with reasons, produced by a subagent that ran on the session model.",
       "files": [],
       "expectations": [
+        "`routing.mjs context` ran before the spawn, which shows that the skill was loaded and applied",
         "The subagent was spawned with no model parameter",
         "No line starting with `Routing:` or `Routing proposal:` was shown",
         "The user was not asked any question about models",
@@ -42,10 +43,11 @@
     },
     {
       "id": 4,
-      "prompt": "Have a subagent write a Node script at /tmp/subagent-routing-eval/count-skills.mjs that prints the number of SKILL.md files under plugins/, then run it and tell me the number.",
-      "expected_output": "The script exists, runs, and prints the count. It was written by a subagent that ran on the session model.",
+      "prompt": "Have a subagent write a Node script at /tmp/subagent-routing-eval/count-skills.mjs that prints the number of SKILL.md files under plugins/.",
+      "expected_output": "The script exists. It was written by a subagent that ran on the session model.",
       "files": [],
       "expectations": [
+        "`routing.mjs context` ran before the spawn, which shows that the skill was loaded and applied",
         "The subagent that wrote the script was spawned with no model parameter",
         "No line starting with `Routing:` or `Routing proposal:` was shown",
         "The user was not asked any question about models",
@@ -68,20 +70,20 @@
       "id": 6,
       "prompt": "Use a subagent to check plugins/writing/skills/stakeholder-summary/SKILL.md against these rules, yes or no for each with the line as evidence: the folder name equals the `name` field; a `description` field is present; the description is under 1024 characters; there is no whitespace before the opening `---`.",
       "expected_output": "The four yes/no answers with evidence, followed by a draft agent definition for the recurring shape and a request for approval. No agent file has been written when the turn ends.",
-      "files": ["evals/files/state/ledger.jsonl"],
+      "files": [],
       "expectations": [
-        "`routing.mjs record` was called with `--shape skill-frontmatter-check`, the shape name already present in the ledger, and not with a new name",
+        "`routing.mjs record` was called with `--shape skill-frontmatter-check`, the shape name already present in the ledger fixture, and not with a new name",
         "After `record` returned `\"promote\": true`, a draft agent definition was shown with its name, model, scope and target path",
         "The proposed scope is global, because the ledger shows the shape in two or more projects",
-        "No agent file exists at the target path before the user approves",
+        "No agent file named `skill-frontmatter-check` exists in any agents directory before the user approves",
         "`routing.mjs mark` was not called before the user answered"
       ]
     },
     {
       "id": 7,
       "prompt": "Use a subagent to list every file in this repo that contains the string `plugin.json`, with line numbers.",
-      "expected_output": "A list of paths with line numbers. The model named in the routing file does not exist in the catalogue, so it was not used.",
-      "files": ["evals/files/config/routes.json"],
+      "expected_output": "A list of paths with line numbers. The model named in the routing-file fixture does not exist in the catalogue, so it was not used.",
+      "files": [],
       "expectations": [
         "No subagent was spawned with the model `example-missing/none-1`",
         "In OpenCode: the model catalogue was consulted, the candidate was found missing, the subagent was spawned with no model parameter, and no line starting with `Routing:` was shown",
