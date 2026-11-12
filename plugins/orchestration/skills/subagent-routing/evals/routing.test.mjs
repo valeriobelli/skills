@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -238,6 +240,7 @@ test("a routing file with a malformed restriction, reference or key is invalid",
     { tiers: twoProviders, sameProviderOnly: [""] },
     { tiers: { small: "claude-agent/haiku" } },
     { tiers: { small: ["haiku"] } },
+    { tiers: { small: ["claude-agent/hai\u001bku"] } },
     { tiers: { small: [42] } },
   ];
   for (const content of malformed) {
@@ -297,6 +300,19 @@ test("record creates the state directory and keeps one entry per line", () => {
     ledgerLines(dirs).map((line) => JSON.parse(line).shape),
     ["sql-migration-check", "sql-migration-check"],
   );
+  // The ledger holds project paths, so only its owner may read it.
+  assert.equal(statSync(dirs.state).mode & 0o777, 0o700);
+  assert.equal(statSync(join(dirs.state, "ledger.jsonl")).mode & 0o777, 0o600);
+});
+
+test("record fails when the batch cannot be read back", (t) => {
+  if (process.getuid?.() === 0) return t.skip("root ignores file permissions");
+  const dirs = sandbox();
+  writeLedger(dirs, [batch("2026-01-05")]);
+  chmodSync(join(dirs.state, "ledger.jsonl"), 0o200);
+  const { code, stderr } = run(dirs, recordArgs);
+  assert.equal(code, 2);
+  assert.match(stderr, /cannot be read back/);
 });
 
 test("record starts a new line when the ledger has lost its final newline", () => {
@@ -315,9 +331,16 @@ test("record trims, flattens and truncates the charter", () => {
   const dirs = sandbox();
   const long = `  first line\nsecond   line ${"x".repeat(300)}  `;
   ok(dirs, ["record", "--row", "extract", "--shape", "extract", "--tier", "inherit", "--tool", "opencode", "--charter", long]);
-  const entry = JSON.parse(ledgerLines(dirs)[0]);
-  assert.equal(entry.charter.length, 200);
-  assert.ok(entry.charter.startsWith("first line second line x"));
+  const base = ["record", "--row", "extract", "--shape", "extract", "--tier", "inherit", "--tool", "opencode"];
+  // The cut falls after the emoji, which must not be split in two.
+  ok(dirs, [...base, "--charter", `${"a".repeat(199)}😀 tail`]);
+  // The cut falls on a space, which must not be left at the end.
+  ok(dirs, [...base, "--charter", `${"b".repeat(199)} tail`]);
+  const [flattened, emoji, spaced] = ledgerLines(dirs).map((line) => JSON.parse(line).charter);
+  assert.equal(flattened.length, 200);
+  assert.ok(flattened.startsWith("first line second line x"));
+  assert.equal(emoji, `${"a".repeat(199)}😀`);
+  assert.equal(spaced, "b".repeat(199));
 });
 
 test("record stores a null model for an inherited batch", () => {
@@ -354,6 +377,7 @@ test("record rejects bad arguments and writes nothing", () => {
     [["--count", "abc"], /--count must be a whole number/],
     [["--model", "haiku"], /--model must be/],
     [["--model", ""], /--model must be/],
+    [["--model", "claude-agent/hai\u001bku"], /--model must be/],
     [["--model", `claude-agent/${"x".repeat(300)}`], /--model must be/],
     [["--tool", "claude-code"], /--model must be/],
   ];

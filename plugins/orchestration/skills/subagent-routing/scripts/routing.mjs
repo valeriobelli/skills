@@ -21,7 +21,8 @@ const ALIAS = /^[a-z0-9][a-z0-9.-]*$/;
 // A UTC timestamp as written by Date.prototype.toISOString.
 const UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T.*Z$/;
 // "provider/model" with an optional "#variant"; the provider ends at the first "/".
-const REFERENCE = /^[^/#\s]+\/[^#\s]+(#\S+)?$/;
+// No whitespace or control characters anywhere.
+const REFERENCE = /^[^/#\s\p{Cc}]+\/[^#\s\p{Cc}]+(#[^\s\p{Cc}]+)?$/u;
 const ROUTES_KEYS = ["version", "tiers", "sameProviderOnly"];
 
 const env = process.env;
