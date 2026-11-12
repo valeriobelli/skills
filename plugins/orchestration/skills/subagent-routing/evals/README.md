@@ -55,6 +55,23 @@ SUBAGENT_ROUTING_STATE_DIR="$SCRATCH/state" SUBAGENT_ROUTING_CONFIG_DIR="$SCRATC
 
 Remove `"$SCRATCH/config/routes.json"` again before you go back to evals 1 to 6. It names a model that does not exist, which changes the result of evals 1 and 2 in OpenCode.
 
+### Headless, in Claude Code
+
+A case can also run without a terminal session. Load the bundle from the working tree, so that nothing is installed:
+
+```bash
+claude -p "<the prompt of the case>" \
+  --plugin-dir "$PWD/plugins/orchestration" \
+  --allowedTools "Bash(node $PWD/$SKILL/scripts/routing.mjs *)" \
+    "Bash(grep *)" "Bash(rg *)" "Bash(find *)" "Bash(ls *)" \
+  --output-format stream-json --verbose --no-session-persistence \
+  > transcript.jsonl
+```
+
+Set the two variables as above. A headless run cannot answer a permission prompt, so every command that would prompt is refused. The allow list covers the script and the read-only searches the subagents need. The skill is named `orchestration:subagent-routing` in such a run.
+
+The transcript has one JSON object per line. The subagent calls are the `tool_use` entries named `Agent`; their `model` input is the model that was set.
+
 ### The fixtures
 
 `files/state/ledger.jsonl` holds one shape, `skill-frontmatter-check`, with three batches on two days in two projects. That already meets the promotion threshold, so the next `record` for that shape returns `"promote": true`. Eval 6 checks what the agent does with it.

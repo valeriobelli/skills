@@ -3,11 +3,11 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "In parallel, find three things in this repo and give me paths and line numbers for each: (a) every file that contains the string `marketplace.json`, (b) every SKILL.md that contains the word `subagent`, (c) every file that contains the string `~/.claude`.",
+      "prompt": "Spawn three agents in parallel to find three things in this repo, and give me paths and line numbers for each: (a) every file that contains the string `marketplace.json`, (b) every SKILL.md that contains the word `subagent`, (c) every file that contains the string `~/.claude`.",
       "expected_output": "Three lists of file paths with line numbers. The searches were delegated to subagents on the small tier without the user being asked anything about models.",
       "files": [],
       "expectations": [
-        "The agent loaded the subagent-routing skill by itself before the first subagent was spawned, although the prompt mentions neither models nor subagents",
+        "The agent loaded the subagent-routing skill by itself before the first subagent was spawned, although the prompt names neither the skill nor a model",
         "Every search subagent was spawned with a small-tier model parameter (the `haiku` alias in Claude Code, a small-tier `provider/model` reference in OpenCode)",
         "Exactly one line starting with `Routing:` was shown for the batch, naming the shape, the tier and the model",
         "The user was not asked any question before the subagents were spawned",
