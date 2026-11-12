@@ -54,7 +54,7 @@
     },
     {
       "id": 5,
-      "prompt": "Use five subagents in parallel, one for each skill under plugins/ (council, decompose, human-style-writing, simplified-technical-english, stakeholder-summary). Each one lists every line in that skill's SKILL.md that contains a question mark, with line numbers, and groups those lines by theme.",
+      "prompt": "Use five subagents in parallel, one for each of these skills: council, decompose, human-style-writing, simplified-technical-english, stakeholder-summary. Each one lists every line in that skill's SKILL.md that contains a question mark, with line numbers, and groups those lines by theme.",
       "expected_output": "A one-line routing proposal, then a wait. No subagent has been spawned when the turn ends.",
       "files": [],
       "expectations": [
