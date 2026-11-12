@@ -109,6 +109,7 @@ test("context with no files reports a missing routing file and no shapes", () =>
   const dirs = sandbox();
   assert.deepEqual(ok(dirs, ["context"]), {
     routesStatus: "missing",
+    routesProblem: null,
     restricted: false,
     candidates: null,
     shapes: [],
@@ -157,6 +158,7 @@ test("an unrestricted project gets every candidate", () => {
   writeRoutes(dirs, { version: 1, tiers: twoProviders, sameProviderOnly: [dirs.work] });
   const json = ok(dirs, ["context", "--provider", "claude-agent"], { cwd: dirs.workOther });
   assert.equal(json.routesStatus, "ok");
+  assert.equal(json.routesProblem, null);
   assert.equal(json.restricted, false);
   assert.deepEqual(json.candidates, twoProviders);
 });
@@ -194,6 +196,9 @@ test("a prefix written with ~ or through a symlink matches the project", () => {
   assert.equal(ok(dirs, ["context"], { env: { HOME: dirs.root } }).restricted, true);
   assert.equal(ok(dirs, ["context"], { cwd: dirs.workOther, env: { HOME: dirs.root } }).restricted, false);
 
+  // With no usable home directory, ~ cannot be resolved, so the file is rejected.
+  assert.equal(ok(dirs, ["context"], { env: { HOME: "" } }).routesStatus, "invalid");
+
   const link = join(dirs.root, "link");
   symlinkSync(dirs.work, link);
   writeRoutes(dirs, { version: 1, tiers: twoProviders, sameProviderOnly: [link] });
@@ -214,14 +219,18 @@ test("a routing file that is not JSON or has no tiers is invalid, with exit code
     writeRoutes(dirs, content);
     const json = ok(dirs, ["context", "--provider", "claude-agent"]);
     assert.equal(json.routesStatus, "invalid");
+    assert.equal(typeof json.routesProblem, "string");
     assert.equal(json.restricted, null);
     assert.equal(json.candidates, null);
   }
 });
 
-test("a routing file with a malformed restriction or reference is invalid", () => {
+test("a routing file with a malformed restriction, reference or key is invalid", () => {
   const dirs = sandbox();
   const malformed = [
+    { tiers: twoProviders, SameProviderOnly: [dirs.work] },
+    { tiers: twoProviders, sameProviderOnly: null },
+    { tiers: twoProviders, version: 2 },
     { tiers: twoProviders, sameProviderOnly: dirs.work },
     { tiers: twoProviders, sameProviderOnly: [42] },
     { tiers: twoProviders, sameProviderOnly: ["work"] },
@@ -235,6 +244,7 @@ test("a routing file with a malformed restriction or reference is invalid", () =
     writeRoutes(dirs, content);
     const json = ok(dirs, ["context", "--provider", "claude-agent"]);
     assert.equal(json.routesStatus, "invalid", JSON.stringify(content));
+    assert.equal(typeof json.routesProblem, "string");
     assert.equal(json.restricted, null);
     assert.equal(json.candidates, null);
   }
@@ -245,5 +255,6 @@ test("a routing file that cannot be read is invalid, not missing", () => {
   mkdirSync(join(dirs.config, "routes.json"));
   const json = ok(dirs, ["context"]);
   assert.equal(json.routesStatus, "invalid");
+  assert.match(json.routesProblem, /cannot be read/);
   assert.equal(json.restricted, null);
 });

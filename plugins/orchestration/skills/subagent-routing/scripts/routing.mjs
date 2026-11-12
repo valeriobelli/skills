@@ -15,6 +15,7 @@ const MIN_DAYS = 2;
 const UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T.*Z$/;
 // "provider/model" with an optional "#variant"; the provider ends at the first "/".
 const REFERENCE = /^[^/#\s]+\/[^#\s]+(#\S+)?$/;
+const ROUTES_KEYS = ["version", "tiers", "sameProviderOnly"];
 
 const env = process.env;
 
@@ -54,8 +55,12 @@ function realPath(path) {
   }
 }
 
+// Leaves the path alone when there is no usable home directory, so that the
+// caller sees a path that is not absolute.
 function expandHome(path) {
-  return path === "~" || path.startsWith("~/") ? join(homedir(), path.slice(1)) : path;
+  const home = homedir();
+  const startsAtHome = path === "~" || path.startsWith("~/");
+  return startsAtHome && isAbsolute(home) ? join(home, path.slice(1)) : path;
 }
 
 function isUnder(root, path) {
@@ -63,37 +68,51 @@ function isUnder(root, path) {
   return rest === "" || (rest !== ".." && !rest.startsWith(`..${sep}`) && !isAbsolute(rest));
 }
 
-// Strict on purpose: a routing file that is only partly understood must not be
-// used, because a restriction that is silently dropped sends code to a provider
-// the user excluded.
-function isValidRoutes(routes) {
-  if (!isPlainObject(routes) || !isPlainObject(routes.tiers)) return false;
-  const tiersValid = Object.values(routes.tiers).every(
-    (references) =>
+// Returns the reason a routing file cannot be used, or null when it is valid.
+// Strict on purpose: a file that is only partly understood must not be used,
+// because a restriction that is silently dropped (a misspelled key, a relative
+// path) sends code to a provider the user excluded.
+function routesProblem(routes) {
+  if (!isPlainObject(routes)) return "the file must hold a JSON object";
+  const unknown = Object.keys(routes).find((key) => !ROUTES_KEYS.includes(key));
+  if (unknown !== undefined) return `unknown key "${unknown}"`;
+  if (routes.version !== undefined && routes.version !== 1) return '"version" must be 1';
+  if (!isPlainObject(routes.tiers)) return '"tiers" must be an object';
+  for (const [tier, references] of Object.entries(routes.tiers)) {
+    const valid =
       Array.isArray(references) &&
-      references.every((reference) => typeof reference === "string" && REFERENCE.test(reference)),
-  );
-  const prefixes = routes.sameProviderOnly ?? [];
+      references.every((reference) => typeof reference === "string" && REFERENCE.test(reference));
+    if (!valid) return `tier "${tier}" must be a list of provider/model references`;
+  }
+  const prefixes = routes.sameProviderOnly;
   const prefixesValid =
-    Array.isArray(prefixes) &&
-    prefixes.every((prefix) => typeof prefix === "string" && isAbsolute(expandHome(prefix)));
-  return tiersValid && prefixesValid;
+    prefixes === undefined ||
+    (Array.isArray(prefixes) &&
+      prefixes.every((prefix) => typeof prefix === "string" && isAbsolute(expandHome(prefix))));
+  if (!prefixesValid) {
+    return '"sameProviderOnly" must be a list of absolute paths or paths that start with ~/';
+  }
+  return null;
 }
 
-// Returns { status: "ok" | "missing" | "invalid", routes }.
+// Returns { status: "ok" | "missing" | "invalid", problem, routes }.
 function readRoutes() {
+  const invalid = (problem) => ({ status: "invalid", problem, routes: null });
   let text;
   try {
     text = readFileSync(routesPath(), "utf8");
   } catch (error) {
-    return { status: error.code === "ENOENT" ? "missing" : "invalid", routes: null };
+    if (error.code === "ENOENT") return { status: "missing", problem: null, routes: null };
+    return invalid(`the file cannot be read (${error.code})`);
   }
+  let routes;
   try {
-    const routes = JSON.parse(text);
-    return isValidRoutes(routes) ? { status: "ok", routes } : { status: "invalid", routes: null };
+    routes = JSON.parse(text);
   } catch {
-    return { status: "invalid", routes: null };
+    return invalid("the file is not valid JSON");
   }
+  const problem = routesProblem(routes);
+  return problem ? invalid(problem) : { status: "ok", problem: null, routes };
 }
 
 function isRestricted(routes, cwd) {
@@ -181,12 +200,13 @@ function summarize(entries) {
 
 function context(args) {
   const { values } = parseArgs({ args, options: { provider: { type: "string" } } });
-  const { status, routes } = readRoutes();
+  const { status, problem, routes } = readRoutes();
   // With an invalid routing file the restriction is unknown, not absent.
   let restricted = status === "invalid" ? null : false;
   if (routes) restricted = isRestricted(routes, realPath(process.cwd()));
   print({
     routesStatus: status,
+    routesProblem: problem,
     restricted,
     candidates: routes ? candidatesFor(routes, restricted, values.provider) : null,
     shapes: summarize(readLedger()),
