@@ -1,0 +1,8 @@
+{
+  "name": "orchestration",
+  "version": "0.1.0",
+  "description": "Delegation skills. Includes subagent-routing, which chooses the model for a subagent at the moment of delegation and turns recurring delegations into pinned agents.",
+  "author": {
+    "name": "Valerio Belli"
+  }
+}
