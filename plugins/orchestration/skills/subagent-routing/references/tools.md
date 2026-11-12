@@ -79,7 +79,7 @@ Do not set a model and do not record. Say once per session that this tool cannot
 
 Run this when `record` prints `"promote": true`.
 
-**1. Check the name.** If an agent named `<shape>` already exists, built in or custom, in any scope, do not replace it. Ask the user for another file name. The shape keeps its name in the ledger.
+**1. Check the name.** If an agent named `<shape>` already exists, built in or custom, in any scope, do not replace it. Ask the user for another agent name. Use that name for the file and, in Claude Code, for the `name` field. The shape keeps its own name in the ledger.
 
 **2. Choose the model.** Use the row's tier, resolved as above for your tool. If it cannot be resolved, leave the `model` field out.
 
@@ -92,9 +92,11 @@ Run this when `record` prints `"promote": true`.
 | Any other case, and `shape.projects` has two or more entries | Global |
 | Any other case, and `shape.projects` has one entry | Project |
 
-The second row keeps an agent that sends work to another provider out of every restricted project. A project-scope agent exists only in the project it was written in.
+The second row keeps an agent that sends work to another provider out of every restricted project. A project-scope agent exists only in the project it was written in. For that row, also add the file's path to `.git/info/exclude`, so that the agent stays on this machine and does not reach a teammate who restricted the repository.
 
-For project scope, tell the user that the file will be tracked by git unless they exclude it, and that a teammate without that provider cannot use it.
+For any other project-scope agent, tell the user that the file will be tracked by git unless they exclude it.
+
+This rule is the only protection when the tool picks a pinned agent without loading this skill. It does not cover a restriction that the user adds later: see "Changing it" in `references/routes.md`.
 
 `shape.projects` holds working directories, so two folders of one repository count as two projects.
 
@@ -114,9 +116,7 @@ model: <haiku|sonnet>
 
 <charter, written as instructions to the agent>
 
-If you are asked to judge, diagnose or change something, say that it is out of scope and stop.
-
-Return evidence for every statement: a file path with line numbers, a direct quote, or the exact command output. List the exact searches and commands you ran. If you cannot find evidence for something, say so. Do not guess.
+<the evidence clause from the rubric, word for word>
 ```
 
 Tool list by row:
@@ -137,29 +137,35 @@ description: <one sentence: when to delegate to this agent>. Does not judge, dia
 mode: subagent
 model: <provider/model#variant>
 permissions:
-  - action: edit
+  - action: "*"
     resource: "*"
     effect: deny
-  - action: subagent
+  - action: read
     resource: "*"
-    effect: deny
-  <one deny entry for each action in the table below>
+    effect: allow
+  - action: glob
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
+  <one allow entry for each action in the table below>
 ---
 
 <charter, written as instructions to the agent>
 
-If you are asked to judge, diagnose or change something, say that it is out of scope and stop.
-
-Return evidence for every statement: a file path with line numbers, a direct quote, or the exact command output. List the exact searches and commands you ran. If you cannot find evidence for something, say so. Do not guess.
+<the evidence clause from the rubric, word for word>
 ```
 
-Actions to deny by row, each written like the `edit` entry:
+The last matching rule wins, so the first entry denies everything and the later ones allow what the row needs. Extra actions to allow by row, each written like the `read` entry:
 
-| Row | Also deny |
+| Row | Also allow |
 |---|---|
-| `locate`, `extract`, `checklist`, `charter-critic`, `explain` | `shell`, `webfetch`, `websearch` |
-| `run-and-report` | `webfetch`, `websearch` |
-| `retrieve` | `shell` |
+| `locate`, `extract`, `checklist`, `charter-critic`, `explain` | nothing |
+| `run-and-report` | `shell` |
+| `retrieve` | `webfetch`, `websearch` |
+
+If the shape needs an MCP tool, add an allow entry for it.
 
 **5. Show the draft** with its name, model, scope and target path. Wait for the user. If the user does not answer, do nothing, and do not run `mark`.
 

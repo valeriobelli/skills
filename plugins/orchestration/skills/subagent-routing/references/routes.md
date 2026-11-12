@@ -60,6 +60,6 @@ Never add a provider the user did not name.
 
 ## Changing it
 
-When the user asks to change the routing, show the current file, propose the edit, and write it after approval. Run `context` again afterwards, because the candidates have changed.
+When the user asks to change the routing, show the current file, propose the edit, and write it after approval. Run `context --provider <session provider>` again afterwards, because the candidates have changed.
 
-A new restriction does not change agents that are already pinned. After adding a prefix, read the pinned agents in that project and in the global folder. If one names a model on another provider, tell the user.
+A new restriction does not change agents that are already pinned, and the tool can use a pinned agent without loading this skill. After adding a prefix, read the pinned agents in that project and in the global folder. If one names a model on another provider, tell the user and offer to remove its `model` line.

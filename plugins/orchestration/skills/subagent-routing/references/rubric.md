@@ -74,7 +74,7 @@ A task that contains any of these keeps the session model. It is not a match of 
 ## Matching
 
 - **Full match:** the whole task fits one row.
-- **Several rows:** a task made only of rows is a full match. It takes the highest tier among them, and that row is the one you record. "Find every `package.json` and return its `engines` field" is `locate` plus `extract`, so it is small.
+- **Several rows:** a task made only of rows is a full match. It takes the highest tier among them, and that row is the one you record. When the tiers are equal, record the row that comes first in this file. "Find every `package.json` and return its `engines` field" is `locate` plus `extract`: small, recorded as `locate`.
 - **Partial match:** the task fits a row, and also contains work that is outside every row and is not on the never-downgrade list. "List every TODO comment and group them by theme" is a partial match for `extract`: the grouping is outside the row.
 - **No match:** everything else, including every task that contains a never-downgrade item.
 
