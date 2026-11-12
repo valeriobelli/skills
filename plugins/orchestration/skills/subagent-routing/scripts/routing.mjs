@@ -207,6 +207,8 @@ function summarize(entries) {
         shape.charters.push(entry.charter);
       }
     }
+    // Any status string turns promotion off, including one that a newer
+    // version of this script may add. The last one wins.
     if (entry.type === "status" && typeof entry.status === "string") shape.status = entry.status;
     shapes.set(entry.shape, shape);
   }
@@ -236,6 +238,11 @@ function context(args) {
     candidates: routes ? candidatesFor(routes, restricted, values.provider) : null,
     shapes: summarize(readLedger()),
   });
+}
+
+// Reads one shape's summary back from the ledger.
+function findShape(name) {
+  return summarize(readLedger()).find((shape) => shape.shape === name);
 }
 
 function record(args) {
@@ -283,11 +290,12 @@ function record(args) {
     charter,
   });
 
-  const shape = summarize(readLedger()).find((item) => item.shape === values.shape);
+  const shape = findShape(values.shape);
   if (!shape) fail("the batch was written, but the ledger cannot be read back");
   print({ recorded: true, promote: shape.promote, shape });
 }
 
+// A later mark replaces an earlier one. There is no way to clear a status.
 function mark(args) {
   const { values } = parseArgs({
     args,
@@ -295,13 +303,18 @@ function mark(args) {
   });
   if (!values.shape || !KEBAB.test(values.shape)) fail("--shape must be kebab-case");
   if (!STATUSES.includes(values.status)) fail(`--status must be one of ${STATUSES.join(", ")}`);
+  // A shape name that was never recorded is a mistake: marking it would leave
+  // the real shape proposing and add a shape that cannot be removed.
+  if (!findShape(values.shape)?.batches) fail(`--shape ${values.shape} has no recorded batches`);
+
   append({
     type: "status",
     ts: new Date().toISOString(),
     shape: values.shape,
     status: values.status,
   });
-  print({ marked: true, shape: values.shape, status: values.status });
+
+  print({ marked: true, shape: findShape(values.shape) });
 }
 
 const commands = { context, record, mark };

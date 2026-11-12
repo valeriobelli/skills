@@ -439,24 +439,55 @@ test("a shape with a status is not proposed again", () => {
   assert.equal(json.promote, false);
 });
 
+const threeDays = [batch("2026-01-05"), batch("2026-01-06"), batch("2026-01-07")];
+
 test("mark appends a status entry that turns the threshold off", () => {
   const dirs = sandbox();
-  writeLedger(dirs, [batch("2026-01-05"), batch("2026-01-06"), batch("2026-01-07")]);
+  writeLedger(dirs, threeDays);
   assert.equal(ok(dirs, ["context"]).shapes[0].promote, true);
-  assert.deepEqual(ok(dirs, ["mark", "--shape", "sql-migration-check", "--status", "declined"]), {
-    marked: true,
-    shape: "sql-migration-check",
-    status: "declined",
-  });
+
+  const marked = ok(dirs, ["mark", "--shape", "sql-migration-check", "--status", "declined"]);
+  assert.equal(marked.marked, true);
+  assert.equal(marked.shape.status, "declined");
+  assert.equal(marked.shape.promote, false);
+
+  const lines = ledgerLines(dirs);
+  assert.equal(lines.length, 4);
+  const { ts, ...entry } = JSON.parse(lines[3]);
+  assert.deepEqual(entry, { type: "status", shape: "sql-migration-check", status: "declined" });
+  assert.match(ts, /^\d{4}-\d{2}-\d{2}T.*Z$/);
+
   const json = ok(dirs, recordArgs);
   assert.equal(json.shape.status, "declined");
   assert.equal(json.promote, false);
 });
 
-test("mark rejects an unknown status and writes nothing", () => {
+test("a later mark replaces an earlier one", () => {
   const dirs = sandbox();
-  const { code, stderr } = run(dirs, ["mark", "--shape", "sql-migration-check", "--status", "maybe"]);
-  assert.equal(code, 2);
-  assert.match(stderr, /--status must be one of/);
-  assert.equal(ledgerLines(dirs).length, 0);
+  writeLedger(dirs, threeDays);
+  ok(dirs, ["mark", "--shape", "sql-migration-check", "--status", "declined"]);
+  const marked = ok(dirs, ["mark", "--shape", "sql-migration-check", "--status", "promoted"]);
+  assert.equal(marked.shape.status, "promoted");
+  assert.equal(ledgerLines(dirs).length, 5);
+  const [shape] = ok(dirs, ["context"]).shapes;
+  assert.equal(shape.status, "promoted");
+  assert.equal(shape.promote, false);
+});
+
+test("mark rejects bad arguments and writes nothing", () => {
+  const dirs = sandbox();
+  writeLedger(dirs, threeDays);
+  const rejected = [
+    [["--shape", "sql-migration-check", "--status", "maybe"], /--status must be one of/],
+    [["--shape", "sql-migration-check"], /--status must be one of/],
+    [["--status", "declined"], /--shape must be kebab-case/],
+    [["--shape", "Not Kebab", "--status", "declined"], /--shape must be kebab-case/],
+    [["--shape", "sql-migration-chek", "--status", "declined"], /has no recorded batches/],
+  ];
+  for (const [args, message] of rejected) {
+    const { code, stderr } = run(dirs, ["mark", ...args]);
+    assert.equal(code, 2, args.join(" "));
+    assert.match(stderr, message);
+  }
+  assert.equal(ledgerLines(dirs).length, 3);
 });
