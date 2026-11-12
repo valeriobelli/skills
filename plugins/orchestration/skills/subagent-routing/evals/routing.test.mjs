@@ -258,3 +258,91 @@ test("a routing file that cannot be read is invalid, not missing", () => {
   assert.match(json.routesProblem, /cannot be read/);
   assert.equal(json.restricted, null);
 });
+
+const recordArgs = [
+  "record",
+  "--row", "checklist",
+  "--shape", "sql-migration-check",
+  "--tier", "small",
+  "--model", "claude-agent/haiku",
+  "--count", "3",
+  "--charter", "Check a migration against the locking checklist",
+  "--tool", "opencode",
+];
+
+test("record appends one batch entry", () => {
+  const dirs = sandbox();
+  assert.equal(ok(dirs, recordArgs).recorded, true);
+  const lines = ledgerLines(dirs);
+  assert.equal(lines.length, 1);
+  const entry = JSON.parse(lines[0]);
+  assert.equal(entry.type, "batch");
+  assert.equal(entry.project, dirs.work);
+  assert.equal(entry.row, "checklist");
+  assert.equal(entry.shape, "sql-migration-check");
+  assert.equal(entry.tier, "small");
+  assert.equal(entry.model, "claude-agent/haiku");
+  assert.equal(entry.count, 3);
+  assert.equal(entry.tool, "opencode");
+  assert.match(entry.ts, /^\d{4}-\d{2}-\d{2}T.*Z$/);
+});
+
+test("record truncates a long charter and flattens whitespace", () => {
+  const dirs = sandbox();
+  const long = `first line\nsecond   line ${"x".repeat(300)}`;
+  ok(dirs, ["record", "--row", "extract", "--shape", "extract", "--tier", "small", "--tool", "opencode", "--charter", long]);
+  const entry = JSON.parse(ledgerLines(dirs)[0]);
+  assert.equal(entry.charter.length, 200);
+  assert.ok(entry.charter.startsWith("first line second line x"));
+});
+
+test("record stores a null model for an inherited batch", () => {
+  const dirs = sandbox();
+  ok(dirs, ["record", "--row", "explain", "--shape", "explain", "--tier", "inherit", "--model", "ignored/model", "--tool", "claude-code"]);
+  const entry = JSON.parse(ledgerLines(dirs)[0]);
+  assert.equal(entry.model, null);
+  assert.equal(entry.count, 1);
+  assert.equal(entry.charter, "");
+});
+
+test("record rejects bad arguments and writes nothing", () => {
+  const dirs = sandbox();
+  const base = ["record", "--row", "extract", "--shape", "extract", "--tier", "small", "--tool", "opencode"];
+  const withArg = (name, value) => base.map((arg, index) => (base[index - 1] === name ? value : arg));
+  const badTier = run(dirs, withArg("--tier", "large"));
+  assert.equal(badTier.code, 2);
+  assert.match(badTier.stderr, /--tier must be one of/);
+  assert.match(run(dirs, withArg("--shape", "Not Kebab")).stderr, /--shape must be kebab-case/);
+  assert.match(run(dirs, withArg("--tool", "cursor")).stderr, /--tool must be one of/);
+  assert.match(run(dirs, [...base, "--count", "0"]).stderr, /--count must be a positive integer/);
+  assert.equal(ledgerLines(dirs).length, 0);
+});
+
+test("three batches on one day do not meet the threshold", () => {
+  const dirs = sandbox();
+  const today = new Date().toISOString().slice(0, 10);
+  writeLedger(dirs, [batch(today), batch(today)]);
+  const json = ok(dirs, recordArgs);
+  assert.equal(json.shape.batches, 3);
+  assert.equal(json.shape.days, 1);
+  assert.equal(json.promote, false);
+});
+
+test("three batches on two days meet the threshold", () => {
+  const dirs = sandbox();
+  writeLedger(dirs, [batch("2026-01-05"), batch("2026-01-05", { project: "/projects/b" })]);
+  const json = ok(dirs, recordArgs);
+  assert.equal(json.shape.batches, 3);
+  assert.equal(json.shape.days, 2);
+  assert.equal(json.promote, true);
+  assert.deepEqual(json.shape.projects, ["/projects/a", "/projects/b", dirs.work]);
+  assert.deepEqual(json.shape.charters, ["Check a migration against the locking checklist"]);
+});
+
+test("two batches on two days do not meet the threshold", () => {
+  const dirs = sandbox();
+  writeLedger(dirs, [batch("2026-01-05")]);
+  const json = ok(dirs, recordArgs);
+  assert.equal(json.shape.batches, 2);
+  assert.equal(json.promote, false);
+});

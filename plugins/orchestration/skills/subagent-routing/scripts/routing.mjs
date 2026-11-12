@@ -3,14 +3,18 @@
 // Commands: context, record, mark. Output is JSON on stdout.
 // Exit codes: 0 ok, 2 bad arguments or an internal error. No dependencies.
 
-import { readFileSync, realpathSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 
+const CHARTER_MAX = 200;
 const CHARTERS_KEPT = 5;
 const MIN_BATCHES = 3;
 const MIN_DAYS = 2;
+const TIERS = ["small", "mid", "inherit"];
+const TOOLS = ["claude-code", "opencode"];
+const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 // A UTC timestamp as written by Date.prototype.toISOString.
 const UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T.*Z$/;
 // "provider/model" with an optional "#variant"; the provider ends at the first "/".
@@ -158,6 +162,11 @@ function readLedger() {
     .filter(isPlainObject);
 }
 
+function append(entry) {
+  mkdirSync(dirname(ledgerPath()), { recursive: true });
+  appendFileSync(ledgerPath(), `${JSON.stringify(entry)}\n`);
+}
+
 function summarize(entries) {
   const shapes = new Map();
   for (const entry of entries) {
@@ -213,9 +222,46 @@ function context(args) {
   });
 }
 
-const commands = { context };
+function record(args) {
+  const { values } = parseArgs({
+    args,
+    options: {
+      row: { type: "string" },
+      shape: { type: "string" },
+      tier: { type: "string" },
+      model: { type: "string" },
+      count: { type: "string", default: "1" },
+      charter: { type: "string", default: "" },
+      tool: { type: "string" },
+    },
+  });
+  if (!values.row || !KEBAB.test(values.row)) fail("--row must be a kebab-case rubric row");
+  if (!values.shape || !KEBAB.test(values.shape)) fail("--shape must be kebab-case");
+  if (!TIERS.includes(values.tier)) fail(`--tier must be one of ${TIERS.join(", ")}`);
+  if (!TOOLS.includes(values.tool)) fail(`--tool must be one of ${TOOLS.join(", ")}`);
+  const count = Number(values.count);
+  if (!Number.isInteger(count) || count < 1) fail("--count must be a positive integer");
+
+  append({
+    type: "batch",
+    ts: new Date().toISOString(),
+    project: process.cwd(),
+    tool: values.tool,
+    row: values.row,
+    shape: values.shape,
+    tier: values.tier,
+    model: values.tier === "inherit" ? null : (values.model ?? null),
+    count,
+    charter: values.charter.replace(/\s+/g, " ").trim().slice(0, CHARTER_MAX),
+  });
+
+  const shape = summarize(readLedger()).find((item) => item.shape === values.shape);
+  print({ recorded: true, promote: shape.promote, shape });
+}
+
+const commands = { context, record };
 const [command, ...rest] = process.argv.slice(2);
-if (!Object.hasOwn(commands, command)) fail("usage: routing.mjs <context> [options]");
+if (!Object.hasOwn(commands, command)) fail("usage: routing.mjs <context|record> [options]");
 try {
   commands[command](rest);
 } catch (error) {
