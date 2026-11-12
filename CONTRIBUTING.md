@@ -47,7 +47,7 @@ make validate          # runs the three checks below
 or individually:
 
 ```bash
-make test                  # unit tests for scripts bundled with skills
+make test                  # unit tests for scripts bundled with skills; needs the Node in .node-version
 claude plugin validate .   # marketplace + plugin.json + skill schema
 npx skills add . --list    # confirm skills are discovered with descriptions
 ```

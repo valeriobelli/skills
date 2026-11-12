@@ -7,7 +7,7 @@ prepare-repo:
 test:
 	node --test "plugins/**/evals/*.test.mjs"
 
-# Full pre-commit gate: mirror in sync, then Claude + skill schema validation.
+# Full pre-commit gate: script unit tests, then Claude + skill schema validation.
 validate: check test
 	claude plugin validate .
 	npx skills@1.5.22 add . --list

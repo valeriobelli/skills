@@ -72,13 +72,14 @@ Most skills need no setup. `subagent-routing` has a helper script and two files 
 ### `subagent-routing`
 
 - **Node.** The helper script needs Node 20 or later. Without Node the skill still chooses models, but it cannot keep its ledger.
-- **Claude Code.** The skill declares its script in `allowed-tools`, so the script runs without a permission prompt in the turn that loads the skill. Claude Code clears that grant at your next message. For later turns, answer the first prompt with "Yes, and don't ask again", or add an allow rule with the script's full path to your settings: `Bash(node /full/path/to/subagent-routing/scripts/routing.mjs *)`.
-- **OpenCode.** Allow the script, or every delegation raises a prompt:
+- **Claude Code.** The skill declares its script in `allowed-tools`, so the script runs without a permission prompt in the turn that loads the skill. Claude Code clears that grant at your next message. For later turns, answer the first prompt with "Yes, and don't ask again", which is saved for the current repository, or add an allow rule with the script's full path to your user settings: `Bash(node /full/path/to/subagent-routing/scripts/routing.mjs *)`. For a marketplace install the path contains the plugin's version, so the rule needs updating when the plugin updates.
+- **OpenCode.** Nothing to configure by default: OpenCode allows shell commands unless you told it to ask. If your configuration asks before shell commands, add an allow rule for the script after that rule, with the script's full path:
 
   ```jsonc
   {
     "permissions": [
-      { "action": "shell", "resource": "node *subagent-routing/scripts/routing.mjs *", "effect": "allow" }
+      { "action": "shell", "resource": "*", "effect": "ask" },
+      { "action": "shell", "resource": "node /full/path/to/subagent-routing/scripts/routing.mjs *", "effect": "allow" }
     ]
   }
   ```
@@ -90,7 +91,7 @@ Most skills need no setup. `subagent-routing` has a helper script and two files 
   Before spawning a subagent, load the `subagent-routing` skill.
   ```
 
-- **Ledger.** Delegations are counted in `~/.local/state/subagent-routing/ledger.jsonl`. Each entry holds a one-line general description of the delegation, never the prompt. Delete the file to reset the counts.
+- **Ledger.** Delegations are counted in `~/.local/state/subagent-routing/ledger.jsonl`. Each entry holds the project's path, the shape, the model, and a one-line general description of the delegation. It never holds the prompt. Delete the file to reset the counts.
 
 ## Repository layout
 
