@@ -88,6 +88,8 @@ End the prompt of every subagent that runs on a chosen model with this text:
 Return evidence for every statement: a file path with line numbers, a direct quote, or the exact command output. List the exact searches and commands you ran. If you cannot find evidence for something, say so. Do not guess. Do not change any file. If the task needs a judgement or a fix, say so and stop.
 ```
 
+For a partial match that the user approved, leave out the last sentence. The part outside the row is then wanted.
+
 ## Naming a shape
 
 A shape is one recurring delegation inside a row. The ledger counts shapes, and a pinned agent is created per shape.
