@@ -2,7 +2,7 @@
 
 ## Add a skill
 
-1. Pick the bundle it belongs to — `reasoning`, `writing`, or [a new one](#add-a-themed-plugin-bundle) — and copy the scaffold into it:
+1. Pick the bundle it belongs to — `orchestration`, `reasoning`, `writing`, or [a new one](#add-a-themed-plugin-bundle) — and copy the scaffold into it:
 
    ```bash
    cp -r templates/skill-template plugins/<bundle>/skills/<your-skill-name>
@@ -12,7 +12,7 @@
    - Folder name is **lowercase, hyphen-separated** (e.g. `code-review`) and MUST equal the `name` frontmatter field.
    - `SKILL.md` (uppercase, exactly) with `---`-delimited YAML frontmatter, **no whitespace before the opening `---`**.
    - **Required** frontmatter: `name`, `description`.
-   - **Optional** (safe everywhere; unknown keys are ignored): `version`, `author`, `tags`, `license`, `metadata`.
+   - **Optional** (safe everywhere; unknown keys are ignored): `version`, `author`, `tags`, `license`, `metadata`, `allowed-tools`.
    - `description` is the trigger the agent reads to decide relevance — say *when to use* and *when not to*, not how it works internally. Keep it under ~1024 chars.
 
 3. **Progressive disclosure** — keep `SKILL.md` lean. Push long material into sibling dirs the agent loads only when needed:
