@@ -13,7 +13,7 @@
    - `SKILL.md` (uppercase, exactly) with `---`-delimited YAML frontmatter, **no whitespace before the opening `---`**.
    - **Required** frontmatter: `name`, `description`.
    - **Optional** (safe everywhere; unknown keys are ignored): `version`, `author`, `tags`, `license`, `metadata`.
-   - **`allowed-tools`** (optional, Claude Code only): pre-approves the listed tools for the turn that loads the skill. Other tools ignore it. Use it only for a script the skill ships, as `subagent-routing` does.
+   - **`allowed-tools`** (optional, Claude Code only): pre-approves the listed tools for the turn that loads the skill. Avoid it. Claude Code then asks the user before it loads the skill, and refuses to load it in a headless run. Other tools ignore it.
    - `description` is the trigger the agent reads to decide relevance — say *when to use* and *when not to*, not how it works internally. Keep it under ~1024 chars.
 
 3. **Progressive disclosure** — keep `SKILL.md` lean. Push long material into sibling dirs the agent loads only when needed:

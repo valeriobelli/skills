@@ -38,7 +38,7 @@ Run `context` again when the session moves to another directory, for example int
 
 **Limits.**
 
-- When `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` is set to `1`, you cannot pass a model. The target is inherit. Check with `printenv CLAUDE_CODE_SUBAGENT_MODEL_FORCE`.
+- When the Agent tool has no `model` parameter, you cannot pass a model, and the target is inherit. This happens when the user set `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`. Look at the tool's parameters; do not run a command to check the variable.
 - An organisation allowlist may replace the model you chose. Claude Code shows its own warning. Do nothing extra.
 - Claude Code talks to one provider at a time. Leave `--provider` out, and ignore `candidates`, `restricted` and `hasRestrictions`.
 

@@ -1,7 +1,6 @@
 ---
 name: subagent-routing
 description: Choose the model for a subagent at the moment of delegation, and record recurring delegations so they can become pinned agents. Use whenever you are about to spawn one or more subagents (the Agent, Task or subagent tool), including from inside another skill or workflow, and when the user says "set up subagent routing" or asks to change which providers subagents may use. Do NOT use when the user named a model for this task, or to decide whether to delegate at all.
-allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/routing.mjs *)
 ---
 
 # subagent-routing
@@ -39,6 +38,8 @@ Your tool may tell you not to set a subagent's model unless the user asks. Insta
 
 `scripts/routing.mjs` in this skill's base directory. In Claude Code: `${CLAUDE_SKILL_DIR}/scripts/routing.mjs`. If that line shows a placeholder and not a real path, use the base directory your tool reported when it loaded this skill. Below, `<script>` means this path.
 
+Write the path in full, exactly as it is shown here, in every command, even when a shorter relative path would work. Start the command with `node`, with no `cd` before it and nothing chained after it. The user allows this one command form once, and every other form asks them again.
+
 ## Workflow
 
 ### Step 0 — Read the context, once per session
@@ -64,7 +65,7 @@ First, check for a custom agent. If one fits the whole task, use it as it is, wi
 
 Otherwise read `references/rubric.md` the first time, and compare the task with the rows, using its "Matching" section.
 
-- **No match.** No row fits, or the task contains a never-downgrade item. Spawn as you normally would. Stop here: no announcement, no question, no ledger entry.
+- **No match.** No row fits, or the task contains a never-downgrade item. Spawn as you normally would. Stop here: no announcement, no question, no ledger entry. Do not mention routing to the user at all.
 - **Full match.** The whole task fits one row, or is made only of rows. Continue.
 - **Partial match.** The task fits a row and also contains work outside every row. Continue.
 
