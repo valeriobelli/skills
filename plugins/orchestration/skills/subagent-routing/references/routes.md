@@ -48,6 +48,8 @@ For a routing decision, do not read this file yourself. The `context` command re
 
 Run this only when the user asks ("set up subagent routing"). Do not offer it unprompted.
 
+In Claude Code there is nothing to set up: say so and stop. The steps below are for OpenCode.
+
 1. Read the model catalogue with the model lookup tool. List the providers that are available, with the session's provider first.
 2. Ask which providers may receive code from the user's projects. Ask one question.
 3. Ask whether any project must stay on the session's provider. Ask for every folder where such a project is checked out, worktrees included. Take the answer as path prefixes for `sameProviderOnly`.

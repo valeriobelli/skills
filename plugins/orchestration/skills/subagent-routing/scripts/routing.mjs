@@ -1,5 +1,5 @@
-#!/usr/bin/env node
 // Ledger and routing-file helper for the subagent-routing skill.
+// Run it with node: `node routing.mjs <command>`.
 // Commands: context, record, mark. Output is JSON on stdout.
 // Exit codes: 0 ok, 2 bad arguments or an internal error. No dependencies.
 

@@ -51,6 +51,7 @@ node <script> context --provider <session provider>
 
 - `--provider` is for OpenCode only. `references/tools.md` says how to find the session provider. Leave the flag out in Claude Code, and whenever you cannot determine the provider.
 - The output has `routesStatus`, `routesProblem`, `restricted`, `hasRestrictions`, `candidates` and `shapes`. Keep it for the rest of the session.
+- `shapes` is there so that you reuse existing names. Do not start a promotion from it. Promote only when `record` says so, in Step 5.
 - Run it again if the session moves to another directory. The restriction is decided from the working directory.
 - If `routesStatus` is `invalid`, tell the user once that the routing file is not being used, and quote `routesProblem` so they can fix it. There are then no candidates, and `restricted` and `hasRestrictions` are `null`. Treat `null` as restricted.
 - If the command fails or you have no shell, go to Fallback.

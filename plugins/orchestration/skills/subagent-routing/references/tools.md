@@ -150,6 +150,15 @@ permissions:
   - action: read
     resource: "*"
     effect: allow
+  - action: read
+    resource: "*.env"
+    effect: ask
+  - action: read
+    resource: "*.env.*"
+    effect: ask
+  - action: read
+    resource: "*.env.example"
+    effect: allow
   - action: glob
     resource: "*"
     effect: allow
@@ -164,7 +173,7 @@ permissions:
 <the evidence clause from the rubric, word for word>
 ```
 
-The last matching rule wins, so the first entry denies everything and the later ones allow what the row needs. Extra actions to allow by row, each written like the `read` entry:
+The last matching rule wins, so the first entry denies everything and the later ones allow what the row needs. The three `.env` entries restore OpenCode's default of asking before it reads an environment file, which the `read` entry above them would otherwise remove. Keep them. Extra actions to allow by row, each written like the first `read` entry:
 
 | Row | Also allow |
 |---|---|
@@ -172,7 +181,7 @@ The last matching rule wins, so the first entry denies everything and the later 
 | `run-and-report` | `shell` |
 | `retrieve` | `webfetch`, `websearch` |
 
-If the shape needs an MCP tool, add an allow entry for it.
+If the shape needs an MCP tool, add an allow entry for it. Its action is `<server>_<tool>`.
 
 **5. Show the draft** with its name, model, scope and target path. Wait for the user. If the user does not answer, do nothing, and do not run `mark`.
 
