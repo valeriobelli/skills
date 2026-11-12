@@ -124,6 +124,18 @@ test("an unknown command exits with code 2", () => {
   assert.equal(run(dirs, []).code, 2);
 });
 
+test("a config or state directory that is not absolute is refused", () => {
+  const dirs = sandbox();
+  // Without a home directory the defaults would be relative to the project.
+  const noHome = { HOME: "", XDG_CONFIG_HOME: "", XDG_STATE_HOME: "" };
+  const config = run(dirs, ["context"], { env: { ...noHome, SUBAGENT_ROUTING_CONFIG_DIR: "" } });
+  assert.equal(config.code, 2);
+  assert.match(config.stderr, /config directory is not an absolute path/);
+  const state = run(dirs, ["context"], { env: { ...noHome, SUBAGENT_ROUTING_STATE_DIR: "state" } });
+  assert.equal(state.code, 2);
+  assert.match(state.stderr, /state directory is not an absolute path/);
+});
+
 test("context lists every shape and skips ledger lines that are not JSON objects", () => {
   const dirs = sandbox();
   writeLedger(dirs, [
@@ -231,6 +243,8 @@ test("a routing file with a malformed restriction, reference or key is invalid",
   const dirs = sandbox();
   const malformed = [
     { tiers: twoProviders, SameProviderOnly: [dirs.work] },
+    { tiers: twoProviders, ["k".repeat(500)]: true },
+    { tiers: { ["t".repeat(500)]: "not a list" } },
     { tiers: twoProviders, sameProviderOnly: null },
     { tiers: twoProviders, version: 2 },
     { tiers: twoProviders, sameProviderOnly: dirs.work },
@@ -248,6 +262,7 @@ test("a routing file with a malformed restriction, reference or key is invalid",
     const json = ok(dirs, ["context", "--provider", "claude-agent"]);
     assert.equal(json.routesStatus, "invalid", JSON.stringify(content));
     assert.equal(typeof json.routesProblem, "string");
+    assert.ok(json.routesProblem.length < 120);
     assert.equal(json.restricted, null);
     assert.equal(json.candidates, null);
   }
@@ -426,17 +441,20 @@ test("two batches on two days do not meet the threshold", () => {
 });
 
 test("a shape with a status is not proposed again", () => {
-  const dirs = sandbox();
-  writeLedger(dirs, [
-    batch("2026-01-05"),
-    batch("2026-01-06"),
-    batch("2026-01-07"),
-    { type: "status", ts: "2026-01-08T10:00:00.000Z", shape: "sql-migration-check", status: "declined" },
-  ]);
-  const json = ok(dirs, recordArgs);
-  assert.equal(json.shape.batches, 4);
-  assert.equal(json.shape.status, "declined");
-  assert.equal(json.promote, false);
+  // Any status string counts, including one this version does not write.
+  for (const status of ["declined", "superseded"]) {
+    const dirs = sandbox();
+    writeLedger(dirs, [
+      batch("2026-01-05"),
+      batch("2026-01-06"),
+      batch("2026-01-07"),
+      { type: "status", ts: "2026-01-08T10:00:00.000Z", shape: "sql-migration-check", status },
+    ]);
+    const json = ok(dirs, recordArgs);
+    assert.equal(json.shape.batches, 4);
+    assert.equal(json.shape.status, status);
+    assert.equal(json.promote, false);
+  }
 });
 
 const threeDays = [batch("2026-01-05"), batch("2026-01-06"), batch("2026-01-07")];
@@ -476,8 +494,11 @@ test("a later mark replaces an earlier one", () => {
 
 test("mark rejects bad arguments and writes nothing", () => {
   const dirs = sandbox();
-  writeLedger(dirs, threeDays);
+  // The second shape exists in the ledger, but only as a status line.
+  const statusOnly = { type: "status", ts: "2026-01-08T10:00:00.000Z", shape: "status-only", status: "declined" };
+  writeLedger(dirs, [...threeDays, statusOnly]);
   const rejected = [
+    [["--shape", "status-only", "--status", "promoted"], /has no recorded batches/],
     [["--shape", "sql-migration-check", "--status", "maybe"], /--status must be one of/],
     [["--shape", "sql-migration-check"], /--status must be one of/],
     [["--status", "declined"], /--shape must be kebab-case/],
@@ -489,5 +510,5 @@ test("mark rejects bad arguments and writes nothing", () => {
     assert.equal(code, 2, args.join(" "));
     assert.match(stderr, message);
   }
-  assert.equal(ledgerLines(dirs).length, 3);
+  assert.equal(ledgerLines(dirs).length, 4);
 });
