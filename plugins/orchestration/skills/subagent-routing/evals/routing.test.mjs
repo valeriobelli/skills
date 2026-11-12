@@ -438,3 +438,25 @@ test("a shape with a status is not proposed again", () => {
   assert.equal(json.shape.status, "declined");
   assert.equal(json.promote, false);
 });
+
+test("mark appends a status entry that turns the threshold off", () => {
+  const dirs = sandbox();
+  writeLedger(dirs, [batch("2026-01-05"), batch("2026-01-06"), batch("2026-01-07")]);
+  assert.equal(ok(dirs, ["context"]).shapes[0].promote, true);
+  assert.deepEqual(ok(dirs, ["mark", "--shape", "sql-migration-check", "--status", "declined"]), {
+    marked: true,
+    shape: "sql-migration-check",
+    status: "declined",
+  });
+  const json = ok(dirs, recordArgs);
+  assert.equal(json.shape.status, "declined");
+  assert.equal(json.promote, false);
+});
+
+test("mark rejects an unknown status and writes nothing", () => {
+  const dirs = sandbox();
+  const { code, stderr } = run(dirs, ["mark", "--shape", "sql-migration-check", "--status", "maybe"]);
+  assert.equal(code, 2);
+  assert.match(stderr, /--status must be one of/);
+  assert.equal(ledgerLines(dirs).length, 0);
+});

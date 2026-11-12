@@ -15,6 +15,7 @@ const MIN_DAYS = 2;
 const MODEL_MAX = 200;
 const TIERS = ["small", "mid", "inherit"];
 const TOOLS = ["claude-code", "opencode"];
+const STATUSES = ["promoted", "declined"];
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 // A Claude Code model alias such as "haiku".
 const ALIAS = /^[a-z0-9][a-z0-9.-]*$/;
@@ -287,9 +288,25 @@ function record(args) {
   print({ recorded: true, promote: shape.promote, shape });
 }
 
-const commands = { context, record };
+function mark(args) {
+  const { values } = parseArgs({
+    args,
+    options: { shape: { type: "string" }, status: { type: "string" } },
+  });
+  if (!values.shape || !KEBAB.test(values.shape)) fail("--shape must be kebab-case");
+  if (!STATUSES.includes(values.status)) fail(`--status must be one of ${STATUSES.join(", ")}`);
+  append({
+    type: "status",
+    ts: new Date().toISOString(),
+    shape: values.shape,
+    status: values.status,
+  });
+  print({ marked: true, shape: values.shape, status: values.status });
+}
+
+const commands = { context, record, mark };
 const [command, ...rest] = process.argv.slice(2);
-if (!Object.hasOwn(commands, command)) fail("usage: routing.mjs <context|record> [options]");
+if (!Object.hasOwn(commands, command)) fail("usage: routing.mjs <context|record|mark> [options]");
 try {
   commands[command](rest);
 } catch (error) {
