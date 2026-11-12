@@ -3,9 +3,9 @@
 prepare-repo:
 	git config set core.hooksPath .githooks
 
-# Unit tests for helper scripts bundled with skills.
+# Unit tests for helper scripts bundled with skills. Node expands the glob, not the shell.
 test:
-	node --test plugins/orchestration/skills/subagent-routing/evals/routing.test.mjs
+	node --test "plugins/**/evals/*.test.mjs"
 
 # Full pre-commit gate: mirror in sync, then Claude + skill schema validation.
 validate: check test

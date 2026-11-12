@@ -1,16 +1,20 @@
 #!/usr/bin/env node
 // Ledger and routing-file helper for the subagent-routing skill.
 // Commands: context, record, mark. Output is JSON on stdout.
-// Exit codes: 0 ok, 2 bad arguments. No dependencies.
+// Exit codes: 0 ok, 2 bad arguments or an internal error. No dependencies.
 
 import { readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve, sep } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 
 const CHARTERS_KEPT = 5;
 const MIN_BATCHES = 3;
 const MIN_DAYS = 2;
+// A UTC timestamp as written by Date.prototype.toISOString.
+const UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T.*Z$/;
+// "provider/model" with an optional "#variant"; the provider ends at the first "/".
+const REFERENCE = /^[^/#\s]+\/[^#\s]+(#\S+)?$/;
 
 const env = process.env;
 
@@ -37,9 +41,14 @@ function print(value) {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 }
 
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+// The native variant also resolves letter case on case-insensitive filesystems.
 function realPath(path) {
   try {
-    return realpathSync(path);
+    return realpathSync.native(path);
   } catch {
     return resolve(path);
   }
@@ -49,40 +58,50 @@ function expandHome(path) {
   return path === "~" || path.startsWith("~/") ? join(homedir(), path.slice(1)) : path;
 }
 
+function isUnder(root, path) {
+  const rest = relative(root, path);
+  return rest === "" || (rest !== ".." && !rest.startsWith(`..${sep}`) && !isAbsolute(rest));
+}
+
+// Strict on purpose: a routing file that is only partly understood must not be
+// used, because a restriction that is silently dropped sends code to a provider
+// the user excluded.
+function isValidRoutes(routes) {
+  if (!isPlainObject(routes) || !isPlainObject(routes.tiers)) return false;
+  const tiersValid = Object.values(routes.tiers).every(
+    (references) =>
+      Array.isArray(references) &&
+      references.every((reference) => typeof reference === "string" && REFERENCE.test(reference)),
+  );
+  const prefixes = routes.sameProviderOnly ?? [];
+  const prefixesValid =
+    Array.isArray(prefixes) &&
+    prefixes.every((prefix) => typeof prefix === "string" && isAbsolute(expandHome(prefix)));
+  return tiersValid && prefixesValid;
+}
+
 // Returns { status: "ok" | "missing" | "invalid", routes }.
 function readRoutes() {
   let text;
   try {
     text = readFileSync(routesPath(), "utf8");
-  } catch {
-    return { status: "missing", routes: null };
+  } catch (error) {
+    return { status: error.code === "ENOENT" ? "missing" : "invalid", routes: null };
   }
   try {
     const routes = JSON.parse(text);
-    const valid =
-      routes !== null &&
-      typeof routes === "object" &&
-      !Array.isArray(routes) &&
-      routes.tiers !== null &&
-      typeof routes.tiers === "object" &&
-      !Array.isArray(routes.tiers);
-    return valid ? { status: "ok", routes } : { status: "invalid", routes: null };
+    return isValidRoutes(routes) ? { status: "ok", routes } : { status: "invalid", routes: null };
   } catch {
     return { status: "invalid", routes: null };
   }
 }
 
 function isRestricted(routes, cwd) {
-  const prefixes = Array.isArray(routes.sameProviderOnly) ? routes.sameProviderOnly : [];
-  return prefixes
-    .filter((prefix) => typeof prefix === "string")
-    .some((prefix) => {
-      const root = realPath(expandHome(prefix));
-      return cwd === root || cwd.startsWith(root + sep);
-    });
+  return (routes.sameProviderOnly ?? []).some((prefix) =>
+    isUnder(realPath(expandHome(prefix)), cwd),
+  );
 }
 
-// A model reference is "provider/model#variant"; the provider ends at the first "/".
 function providerOf(reference) {
   return reference.split("/")[0];
 }
@@ -90,16 +109,14 @@ function providerOf(reference) {
 // In a restricted project only the session's provider is eligible. With no
 // provider given, nothing is: the rule fails closed.
 function candidatesFor(routes, restricted, provider) {
-  const candidates = {};
-  for (const [tier, references] of Object.entries(routes.tiers)) {
-    const list = Array.isArray(references)
-      ? references.filter((reference) => typeof reference === "string")
-      : [];
-    candidates[tier] = restricted
-      ? list.filter((reference) => providerOf(reference) === provider)
-      : list;
-  }
-  return candidates;
+  return Object.fromEntries(
+    Object.entries(routes.tiers).map(([tier, references]) => [
+      tier,
+      restricted
+        ? references.filter((reference) => Boolean(provider) && providerOf(reference) === provider)
+        : references,
+    ]),
+  );
 }
 
 function readLedger() {
@@ -118,7 +135,8 @@ function readLedger() {
       } catch {
         return [];
       }
-    });
+    })
+    .filter(isPlainObject);
 }
 
 function summarize(entries) {
@@ -135,15 +153,17 @@ function summarize(entries) {
       charters: [],
     };
     if (entry.type === "batch") {
-      shape.row = entry.row ?? shape.row;
       shape.batches += 1;
-      if (typeof entry.ts === "string") shape.days.add(entry.ts.slice(0, 10));
+      if (typeof entry.row === "string") shape.row = entry.row;
+      if (typeof entry.ts === "string" && UTC_TIMESTAMP.test(entry.ts)) {
+        shape.days.add(entry.ts.slice(0, 10));
+      }
       if (typeof entry.project === "string") shape.projects.add(entry.project);
-      if (entry.charter && !shape.charters.includes(entry.charter)) {
+      if (typeof entry.charter === "string" && entry.charter && !shape.charters.includes(entry.charter)) {
         shape.charters.push(entry.charter);
       }
     }
-    if (entry.type === "status") shape.status = entry.status;
+    if (entry.type === "status" && typeof entry.status === "string") shape.status = entry.status;
     shapes.set(entry.shape, shape);
   }
   return [...shapes.values()].map((shape) => ({
@@ -162,7 +182,9 @@ function summarize(entries) {
 function context(args) {
   const { values } = parseArgs({ args, options: { provider: { type: "string" } } });
   const { status, routes } = readRoutes();
-  const restricted = routes ? isRestricted(routes, process.cwd()) : false;
+  // With an invalid routing file the restriction is unknown, not absent.
+  let restricted = status === "invalid" ? null : false;
+  if (routes) restricted = isRestricted(routes, realPath(process.cwd()));
   print({
     routesStatus: status,
     restricted,
