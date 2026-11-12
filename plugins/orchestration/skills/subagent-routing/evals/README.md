@@ -10,7 +10,7 @@ Two kinds of test live here.
 make test
 ```
 
-`make test` needs the Node version in `.node-version`, because it relies on Node to expand a glob. On an older Node, run the file directly: `node --test plugins/orchestration/skills/subagent-routing/evals/routing.test.mjs`.
+`make test` relies on Node to expand a glob, which Node 20 cannot do. CI uses the version in `.node-version`. On an older Node, run the file directly: `node --test plugins/orchestration/skills/subagent-routing/evals/routing.test.mjs`.
 
 Each test uses its own temporary directories, so it never touches your real ledger or routing file.
 
@@ -29,6 +29,7 @@ Do not run the cases through an eval harness that hands the skill to a subagent.
 - The session model must be above the small tier: a Claude model other than haiku. On the small tier the skill correctly does nothing, and evals 1, 2, 5 and 7 fail.
 - In Claude Code, `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` must not be set.
 - The session's working directory is the root of this repository. The prompts refer to its files.
+- For eval 1, no `AGENTS.md` or `CLAUDE.md` that the session reads may tell the agent to load this skill. Eval 1 measures whether the agent loads it by itself.
 
 ### Keep your own files out of it
 
