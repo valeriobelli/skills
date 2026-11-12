@@ -25,6 +25,8 @@ const UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T.*Z$/;
 // No whitespace or control characters anywhere.
 const REFERENCE = /^[^/#\s\p{Cc}]+\/[^#\s\p{Cc}]+(#[^\s\p{Cc}]+)?$/u;
 const ROUTES_KEYS = ["version", "tiers", "sameProviderOnly"];
+// "large" is never a target; it only tells the agent which session models are large.
+const ROUTES_TIERS = ["small", "mid", "large"];
 const NAME_MAX = 40;
 
 const env = process.env;
@@ -98,6 +100,7 @@ function routesProblem(routes) {
   if (routes.version !== undefined && routes.version !== 1) return '"version" must be 1';
   if (!isPlainObject(routes.tiers)) return '"tiers" must be an object';
   for (const [tier, references] of Object.entries(routes.tiers)) {
+    if (!ROUTES_TIERS.includes(tier)) return `unknown tier "${short(tier)}"`;
     const valid =
       Array.isArray(references) &&
       references.every((reference) => typeof reference === "string" && REFERENCE.test(reference));
@@ -230,8 +233,13 @@ function summarize(entries) {
     projects: [...shape.projects],
     status: shape.status,
     charters: shape.charters.slice(-CHARTERS_KEPT),
+    // A shape named after its row is the catch-all for one-off delegations.
+    // Its batches have nothing in common, so there is no agent to pin.
     promote:
-      shape.batches >= MIN_BATCHES && shape.days.size >= MIN_DAYS && shape.status === null,
+      shape.batches >= MIN_BATCHES &&
+      shape.days.size >= MIN_DAYS &&
+      shape.status === null &&
+      shape.shape !== shape.row,
   }));
 }
 
@@ -241,10 +249,14 @@ function context(args) {
   // With an invalid routing file the restriction is unknown, not absent.
   let restricted = status === "invalid" ? null : false;
   if (routes) restricted = isRestricted(routes, realPath(process.cwd()));
+  // Whether any project at all is restricted: null when that is unknown.
+  let hasRestrictions = status === "invalid" ? null : false;
+  if (routes) hasRestrictions = (routes.sameProviderOnly ?? []).length > 0;
   print({
     routesStatus: status,
     routesProblem: problem,
     restricted,
+    hasRestrictions,
     candidates: routes ? candidatesFor(routes, restricted, values.provider) : null,
     shapes: summarize(readLedger()),
   });

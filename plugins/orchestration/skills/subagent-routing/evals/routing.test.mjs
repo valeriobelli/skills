@@ -105,6 +105,7 @@ function batch(day, overrides = {}) {
 const twoProviders = {
   small: ["github-copilot/claude-haiku-5.5", "claude-agent/haiku"],
   mid: ["openrouter/anthropic/claude-sonnet-5.5#high"],
+  large: ["claude-agent/opus"],
 };
 
 test("context with no files reports a missing routing file and no shapes", () => {
@@ -113,6 +114,7 @@ test("context with no files reports a missing routing file and no shapes", () =>
     routesStatus: "missing",
     routesProblem: null,
     restricted: false,
+    hasRestrictions: false,
     candidates: null,
     shapes: [],
   });
@@ -174,7 +176,12 @@ test("an unrestricted project gets every candidate", () => {
   assert.equal(json.routesStatus, "ok");
   assert.equal(json.routesProblem, null);
   assert.equal(json.restricted, false);
+  // Another project is restricted, although this one is not.
+  assert.equal(json.hasRestrictions, true);
   assert.deepEqual(json.candidates, twoProviders);
+
+  writeRoutes(dirs, { tiers: twoProviders });
+  assert.equal(ok(dirs, ["context"]).hasRestrictions, false);
 });
 
 test("a restricted project only gets candidates on the session provider", () => {
@@ -184,7 +191,11 @@ test("a restricted project only gets candidates on the session provider", () => 
   mkdirSync(nested, { recursive: true });
   const json = ok(dirs, ["context", "--provider", "claude-agent"], { cwd: nested });
   assert.equal(json.restricted, true);
-  assert.deepEqual(json.candidates, { small: ["claude-agent/haiku"], mid: [] });
+  assert.deepEqual(json.candidates, {
+    small: ["claude-agent/haiku"],
+    mid: [],
+    large: ["claude-agent/opus"],
+  });
 });
 
 test("a restricted project with no provider, or an empty one, gets no candidates", () => {
@@ -193,7 +204,7 @@ test("a restricted project with no provider, or an empty one, gets no candidates
   for (const args of [["context"], ["context", "--provider", ""]]) {
     const json = ok(dirs, args);
     assert.equal(json.restricted, true);
-    assert.deepEqual(json.candidates, { small: [], mid: [] });
+    assert.deepEqual(json.candidates, { small: [], mid: [], large: [] });
   }
 });
 
@@ -235,6 +246,7 @@ test("a routing file that is not JSON or has no tiers is invalid, with exit code
     assert.equal(json.routesStatus, "invalid");
     assert.equal(typeof json.routesProblem, "string");
     assert.equal(json.restricted, null);
+    assert.equal(json.hasRestrictions, null);
     assert.equal(json.candidates, null);
   }
 });
@@ -254,6 +266,7 @@ test("a routing file with a malformed restriction, reference or key is invalid",
     { tiers: twoProviders, sameProviderOnly: [""] },
     { tiers: { small: "claude-agent/haiku" } },
     { tiers: { small: ["haiku"] } },
+    { tiers: { smal: ["claude-agent/haiku"] } },
     { tiers: { small: ["claude-agent/hai\u001bku"] } },
     { tiers: { small: [42] } },
   ];
@@ -437,6 +450,20 @@ test("two batches on two days do not meet the threshold", () => {
   const json = ok(dirs, recordArgs);
   assert.equal(json.shape.batches, 2);
   assert.equal(json.shape.days, 2);
+  assert.equal(json.promote, false);
+});
+
+test("a shape named after its row is never proposed", () => {
+  const dirs = sandbox();
+  const generic = { row: "locate", shape: "locate" };
+  writeLedger(dirs, [
+    batch("2026-01-05", generic),
+    batch("2026-01-06", generic),
+    batch("2026-01-07", generic),
+  ]);
+  const json = ok(dirs, ["record", "--row", "locate", "--shape", "locate", "--tier", "inherit", "--tool", "opencode"]);
+  assert.equal(json.shape.batches, 4);
+  assert.equal(json.shape.days, 4);
   assert.equal(json.promote, false);
 });
 
