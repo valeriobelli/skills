@@ -67,7 +67,12 @@ For any other family, the target is inherit.
 
 **Files outside the project.** If the task has the subagent read files outside the session's project directory, stay on the session's provider, whatever `restricted` says. The restriction is known only for the directory `context` ran in.
 
-**Pinned agents in a restricted project.** When `restricted` is `true` or `null`, read a pinned agent's file before you use it. If it has a `model` on a provider other than the session's, do not use that agent. Spawn the general agent with the same instructions and no model.
+**Pinned agents.** A pinned agent is any custom agent whose definition has a `model`. The description you see does not show it. Read the definition of a custom agent, in its file or in the configuration, before you use it, in any step, when one of these is true:
+
+- `restricted` is `true` or `null`;
+- the subagent will read files outside the session's project directory.
+
+Do not use the agent when its definition has a `model` on a provider other than the session's, when you cannot find the definition, or when you could not determine the session provider. Spawn the general agent with the same instructions and no model.
 
 **Limit.** Models are enabled per project, so a reference that works in one repository can be missing in another. The catalogue check covers this.
 
@@ -92,7 +97,7 @@ Run this when `record` prints `"promote": true`.
 | Any other case, and `shape.projects` has two or more entries | Global |
 | Any other case, and `shape.projects` has one entry | Project |
 
-The second row keeps an agent that sends work to another provider out of every restricted project. A project-scope agent exists only in the project it was written in. For that row, also add the file's path to `.git/info/exclude`, so that the agent stays on this machine and does not reach a teammate who restricted the repository.
+The second row keeps an agent that sends work to another provider out of every restricted project. A project-scope agent exists only in the project it was written in. For that row, also add the file's path to the exclude file that `git rev-parse --git-path info/exclude` prints, so that the agent stays on this machine and does not reach a teammate who restricted the repository.
 
 For any other project-scope agent, tell the user that the file will be tracked by git unless they exclude it.
 
@@ -103,6 +108,8 @@ This rule is the only protection when the tool picks a pinned agent without load
 **4. Write the draft.** Build the body from `shape.charters` and the prompt of the current batch. Keep what stays the same between runs. Leave out the inputs that change. For global scope, also leave out anything that belongs to one project.
 
 The description and the body must carry the row's limits, because the tool picks a pinned agent by its description and this skill is then not consulted.
+
+When the shape is made of several rows, give the agent what every one of them needs in the tables below.
 
 Claude Code — `.claude/agents/<shape>.md` (project) or `~/.claude/agents/<shape>.md` (global):
 

@@ -57,7 +57,9 @@ node <script> context --provider <session provider>
 
 ### Step 1 — Classify the delegation
 
-First, check for a pinned agent. If an agent that has its own model fits the task, use it as it is, with no model parameter and no ledger entry, and stop here. One exception, for OpenCode: when `restricted` is `true` or `null`, follow "Pinned agents in a restricted project" in `references/tools.md` before you use it.
+Classify each subagent's task on its own. Subagents with different shapes are separate batches.
+
+First, check for a custom agent. If one fits the whole task, use it as it is, with no model parameter and no ledger entry, and stop here. In OpenCode, apply "Pinned agents" in `references/tools.md` before you use any custom agent, in this step or a later one. That rule can tell you not to use it.
 
 Otherwise read `references/rubric.md` the first time, and compare the task with the rows, using its "Matching" section.
 
@@ -100,7 +102,7 @@ Proposal, one line. Do not spawn anything until the user answers:
 Routing proposal: <shape> x<count> -> <tier> (<model>). Outside the <row> row: <what>. Use it, or keep the session model?
 ```
 
-Every prompt for a subagent on a chosen model must end with the evidence clause from the rubric.
+Every prompt for a subagent on a chosen model must end with the evidence clause from the rubric. For a partial match that the user approved, leave out the clause's last sentence, because the part outside the row is then wanted.
 
 If a spawn with a chosen model fails, retry once with no model and say: `Routing: <model> failed, retried on the session model.`
 
