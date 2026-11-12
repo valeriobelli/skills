@@ -93,11 +93,13 @@ Run this when `record` prints `"promote": true`.
 | Condition | Scope |
 |---|---|
 | OpenCode, the model is on a provider other than the session's, and `hasRestrictions` is `false` | Global |
-| OpenCode, the model is on a provider other than the session's, and `hasRestrictions` is `true` or `null` | Project |
+| OpenCode, the agent has a `model`, and `hasRestrictions` is `true` or `null` | Project |
 | Any other case, and `shape.projects` has two or more entries | Global |
 | Any other case, and `shape.projects` has one entry | Project |
 
-The second row keeps an agent that sends work to another provider out of every restricted project. A project-scope agent exists only in the project it was written in. For that row, also add the file's path to the exclude file that `git rev-parse --git-path info/exclude` prints, so that the agent stays on this machine and does not reach a teammate who restricted the repository.
+The second row keeps a pinned model out of every restricted project. It applies also when the model is on the session's provider: a later session in a restricted project can run on another provider, and a global agent would then send work to the provider it pins. A project-scope agent exists only in the project it was written in. For that row, also add the file's path to the exclude file that `git rev-parse --git-path info/exclude` prints, so that the agent stays on this machine and does not reach a teammate who restricted the repository.
+
+The second row does not cover one case: a later session in the same project, on another provider. The agent then sends work to the provider of the session that promoted it, which already received code from that project.
 
 For any other project-scope agent, tell the user that the file will be tracked by git unless they exclude it.
 
@@ -173,7 +175,7 @@ permissions:
 <the evidence clause from the rubric, word for word>
 ```
 
-The last matching rule wins, so the first entry denies everything and the later ones allow what the row needs. The three `.env` entries restore OpenCode's default of asking before it reads an environment file, which the `read` entry above them would otherwise remove. Keep them. Extra actions to allow by row, each written like the first `read` entry:
+The last matching rule wins, so the first entry denies everything and the later ones allow what the row needs. The first entry also denies `external_directory`, so the agent cannot read files outside the project. Do not allow it: that read on another provider breaks core rule 4, and the provider at use time is not known when you write the file. The three `.env` entries restore OpenCode's default of asking before it reads an environment file, which the `read` entry above them would otherwise remove. Keep them. Extra actions to allow by row, each written like the first `read` entry:
 
 | Row | Also allow |
 |---|---|

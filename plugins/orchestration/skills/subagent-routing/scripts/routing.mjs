@@ -3,7 +3,7 @@
 // Commands: context, record, mark. Output is JSON on stdout.
 // Exit codes: 0 ok, 2 bad arguments or an internal error. No dependencies.
 
-import { appendFileSync, mkdirSync, readFileSync, realpathSync } from "node:fs";
+import { appendFileSync, chmodSync, mkdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
@@ -184,6 +184,13 @@ function readLedger() {
 function append(entry) {
   const path = ledgerPath();
   mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  // The mode below applies only to a new file, so a ledger that was copied or
+  // restored keeps its own. Remove the access of other users before writing.
+  try {
+    chmodSync(path, statSync(path).mode & 0o700);
+  } catch {
+    // No ledger yet.
+  }
   let existing = "";
   try {
     existing = readFileSync(path, "utf8");

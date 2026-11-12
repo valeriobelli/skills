@@ -333,6 +333,14 @@ test("record creates the state directory and keeps one entry per line", () => {
   assert.equal(statSync(join(dirs.state, "ledger.jsonl")).mode & 0o777, 0o600);
 });
 
+test("record removes the access of other users from an existing ledger", () => {
+  const dirs = sandbox();
+  writeLedger(dirs, [batch("2026-01-05")]);
+  chmodSync(join(dirs.state, "ledger.jsonl"), 0o644);
+  ok(dirs, recordArgs);
+  assert.equal(statSync(join(dirs.state, "ledger.jsonl")).mode & 0o777, 0o600);
+});
+
 test("record fails when the batch cannot be read back", (t) => {
   if (process.getuid?.() === 0) return t.skip("root ignores file permissions");
   const dirs = sandbox();

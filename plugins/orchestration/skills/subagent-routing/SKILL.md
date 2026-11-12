@@ -110,7 +110,7 @@ If a spawn with a chosen model fails, retry once with no model and say: `Routing
 
 ### Step 4 — Record the batch
 
-After the spawn, for every full or partial match, whether or not a model was set. Run it from the project directory:
+After the spawn, for every full match, whether or not a model was set. Do not record a partial match: a pinned agent carries the row's limits, so it cannot do the part outside the row. Run it from the project directory:
 
 ```
 node <script> record --row <row> --shape <shape> --tier <small|mid|inherit> --model <model> --count <subagents in the batch> --charter "<one line>" --tool <claude-code|opencode>
@@ -118,7 +118,7 @@ node <script> record --row <row> --shape <shape> --tier <small|mid|inherit> --mo
 
 - One call per batch, not per subagent.
 - Leave `--model` out when the tier is `inherit`. Otherwise it is required: the alias in Claude Code, the `provider/model` reference in OpenCode.
-- Record what ran. If the spawn failed and you retried on the session model, or the user turned a proposal down, the tier is `inherit`.
+- Record what ran. If the spawn failed and you retried on the session model, the tier is `inherit`.
 - Write the charter as the rubric's "Writing the charter" says. Never put file paths, identifiers or project text in it.
 
 ### Step 5 — Promote when the ledger says so
@@ -136,7 +136,7 @@ Pass the same shape name you passed to `record`, not the name of the agent file.
 When the script cannot run:
 
 - Routing still works. Use the rubric and the "No candidates" rule in `references/tools.md`. In OpenCode, treat the project as restricted.
-- Skip Step 4. Without the ledger, the only recurrence you can see is inside this session. If the same shape has been delegated in two or more batches in this session with the same charter, say once that it qualifies for a pinned agent and offer a draft. Nothing is saved.
+- Skip Step 4. Without the ledger, the only recurrence you can see is inside this session. If the same shape has been delegated as a full match in two or more batches in this session with the same charter, say once that it qualifies for a pinned agent and offer a draft. Nothing is saved.
 
 ## Reference files
 
