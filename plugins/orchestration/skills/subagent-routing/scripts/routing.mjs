@@ -12,9 +12,12 @@ const CHARTER_MAX = 200;
 const CHARTERS_KEPT = 5;
 const MIN_BATCHES = 3;
 const MIN_DAYS = 2;
+const MODEL_MAX = 200;
 const TIERS = ["small", "mid", "inherit"];
 const TOOLS = ["claude-code", "opencode"];
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+// A Claude Code model alias such as "haiku".
+const ALIAS = /^[a-z0-9][a-z0-9.-]*$/;
 // A UTC timestamp as written by Date.prototype.toISOString.
 const UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T.*Z$/;
 // "provider/model" with an optional "#variant"; the provider ends at the first "/".
@@ -162,9 +165,20 @@ function readLedger() {
     .filter(isPlainObject);
 }
 
+// The ledger holds project paths, so it is readable by its owner only.
 function append(entry) {
-  mkdirSync(dirname(ledgerPath()), { recursive: true });
-  appendFileSync(ledgerPath(), `${JSON.stringify(entry)}\n`);
+  const path = ledgerPath();
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  let existing = "";
+  try {
+    existing = readFileSync(path, "utf8");
+  } catch {
+    // No ledger yet.
+  }
+  // A ledger that lost its final newline would get this entry glued onto its
+  // last line, and neither entry could be read back.
+  const separator = existing === "" || existing.endsWith("\n") ? "" : "\n";
+  appendFileSync(path, `${separator}${JSON.stringify(entry)}\n`, { mode: 0o600 });
 }
 
 function summarize(entries) {
@@ -239,8 +253,20 @@ function record(args) {
   if (!values.shape || !KEBAB.test(values.shape)) fail("--shape must be kebab-case");
   if (!TIERS.includes(values.tier)) fail(`--tier must be one of ${TIERS.join(", ")}`);
   if (!TOOLS.includes(values.tool)) fail(`--tool must be one of ${TOOLS.join(", ")}`);
-  const count = Number(values.count);
-  if (!Number.isInteger(count) || count < 1) fail("--count must be a positive integer");
+  if (!/^[1-9]\d{0,3}$/.test(values.count)) fail("--count must be a whole number from 1 to 9999");
+  const inherit = values.tier === "inherit";
+  if (!inherit) {
+    const pattern = values.tool === "opencode" ? REFERENCE : ALIAS;
+    const valid = values.model && values.model.length <= MODEL_MAX && pattern.test(values.model);
+    if (!valid) {
+      fail("--model must be a provider/model reference (opencode) or a model alias (claude-code)");
+    }
+  }
+  // Cut by code point, so that a character outside the basic plane is never split.
+  const charter = [...values.charter.replace(/\s+/g, " ").trim()]
+    .slice(0, CHARTER_MAX)
+    .join("")
+    .trimEnd();
 
   append({
     type: "batch",
@@ -250,12 +276,13 @@ function record(args) {
     row: values.row,
     shape: values.shape,
     tier: values.tier,
-    model: values.tier === "inherit" ? null : (values.model ?? null),
-    count,
-    charter: values.charter.replace(/\s+/g, " ").trim().slice(0, CHARTER_MAX),
+    model: inherit ? null : values.model,
+    count: Number(values.count),
+    charter,
   });
 
   const shape = summarize(readLedger()).find((item) => item.shape === values.shape);
+  if (!shape) fail("the batch was written, but the ledger cannot be read back");
   print({ recorded: true, promote: shape.promote, shape });
 }
 

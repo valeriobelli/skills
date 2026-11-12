@@ -287,10 +287,34 @@ test("record appends one batch entry", () => {
   assert.match(entry.ts, /^\d{4}-\d{2}-\d{2}T.*Z$/);
 });
 
-test("record truncates a long charter and flattens whitespace", () => {
+test("record creates the state directory and keeps one entry per line", () => {
   const dirs = sandbox();
-  const long = `first line\nsecond   line ${"x".repeat(300)}`;
-  ok(dirs, ["record", "--row", "extract", "--shape", "extract", "--tier", "small", "--tool", "opencode", "--charter", long]);
+  rmSync(dirs.state, { recursive: true });
+  ok(dirs, recordArgs);
+  const json = ok(dirs, recordArgs);
+  assert.equal(json.shape.batches, 2);
+  assert.deepEqual(
+    ledgerLines(dirs).map((line) => JSON.parse(line).shape),
+    ["sql-migration-check", "sql-migration-check"],
+  );
+});
+
+test("record starts a new line when the ledger has lost its final newline", () => {
+  const dirs = sandbox();
+  writeFileSync(
+    join(dirs.state, "ledger.jsonl"),
+    [batch("2026-01-05"), batch("2026-01-06")].map((entry) => JSON.stringify(entry)).join("\n"),
+  );
+  const json = ok(dirs, recordArgs);
+  assert.equal(ledgerLines(dirs).length, 3);
+  assert.equal(json.shape.batches, 3);
+  assert.equal(json.promote, true);
+});
+
+test("record trims, flattens and truncates the charter", () => {
+  const dirs = sandbox();
+  const long = `  first line\nsecond   line ${"x".repeat(300)}  `;
+  ok(dirs, ["record", "--row", "extract", "--shape", "extract", "--tier", "inherit", "--tool", "opencode", "--charter", long]);
   const entry = JSON.parse(ledgerLines(dirs)[0]);
   assert.equal(entry.charter.length, 200);
   assert.ok(entry.charter.startsWith("first line second line x"));
@@ -305,16 +329,45 @@ test("record stores a null model for an inherited batch", () => {
   assert.equal(entry.charter, "");
 });
 
+test("record accepts a model alias for claude-code and a reference for opencode", () => {
+  const dirs = sandbox();
+  const base = ["record", "--row", "extract", "--shape", "extract", "--tier", "small"];
+  ok(dirs, [...base, "--tool", "claude-code", "--model", "haiku"]);
+  ok(dirs, [...base, "--tool", "opencode", "--model", "openrouter/anthropic/claude-haiku-5.5#low"]);
+  assert.deepEqual(
+    ledgerLines(dirs).map((line) => JSON.parse(line).model),
+    ["haiku", "openrouter/anthropic/claude-haiku-5.5#low"],
+  );
+});
+
 test("record rejects bad arguments and writes nothing", () => {
   const dirs = sandbox();
-  const base = ["record", "--row", "extract", "--shape", "extract", "--tier", "small", "--tool", "opencode"];
-  const withArg = (name, value) => base.map((arg, index) => (base[index - 1] === name ? value : arg));
-  const badTier = run(dirs, withArg("--tier", "large"));
-  assert.equal(badTier.code, 2);
-  assert.match(badTier.stderr, /--tier must be one of/);
-  assert.match(run(dirs, withArg("--shape", "Not Kebab")).stderr, /--shape must be kebab-case/);
-  assert.match(run(dirs, withArg("--tool", "cursor")).stderr, /--tool must be one of/);
-  assert.match(run(dirs, [...base, "--count", "0"]).stderr, /--count must be a positive integer/);
+  const valid = ["--row", "extract", "--shape", "extract", "--tier", "small", "--model", "claude-agent/haiku", "--tool", "opencode"];
+  // A later occurrence of a flag wins, so each case overrides one valid value.
+  const rejected = [
+    [["--tier", "large"], /--tier must be one of/],
+    [["--shape", "Not Kebab"], /--shape must be kebab-case/],
+    [["--row", "Not Kebab"], /--row must be a kebab-case rubric row/],
+    [["--tool", "cursor"], /--tool must be one of/],
+    [["--count", "0"], /--count must be a whole number/],
+    [["--count", "1.5"], /--count must be a whole number/],
+    [["--count", "abc"], /--count must be a whole number/],
+    [["--model", "haiku"], /--model must be/],
+    [["--model", ""], /--model must be/],
+    [["--model", `claude-agent/${"x".repeat(300)}`], /--model must be/],
+    [["--tool", "claude-code"], /--model must be/],
+  ];
+  for (const [override, message] of rejected) {
+    const { code, stderr } = run(dirs, ["record", ...valid, ...override]);
+    assert.equal(code, 2, override.join(" "));
+    assert.match(stderr, message);
+  }
+  const missingRow = run(dirs, ["record", ...valid.slice(2)]);
+  assert.equal(missingRow.code, 2);
+  assert.match(missingRow.stderr, /--row must be/);
+  const missingModel = run(dirs, ["record", "--row", "extract", "--shape", "extract", "--tier", "small", "--tool", "opencode"]);
+  assert.equal(missingModel.code, 2);
+  assert.match(missingModel.stderr, /--model must be/);
   assert.equal(ledgerLines(dirs).length, 0);
 });
 
@@ -344,5 +397,20 @@ test("two batches on two days do not meet the threshold", () => {
   writeLedger(dirs, [batch("2026-01-05")]);
   const json = ok(dirs, recordArgs);
   assert.equal(json.shape.batches, 2);
+  assert.equal(json.shape.days, 2);
+  assert.equal(json.promote, false);
+});
+
+test("a shape with a status is not proposed again", () => {
+  const dirs = sandbox();
+  writeLedger(dirs, [
+    batch("2026-01-05"),
+    batch("2026-01-06"),
+    batch("2026-01-07"),
+    { type: "status", ts: "2026-01-08T10:00:00.000Z", shape: "sql-migration-check", status: "declined" },
+  ]);
+  const json = ok(dirs, recordArgs);
+  assert.equal(json.shape.batches, 4);
+  assert.equal(json.shape.status, "declined");
   assert.equal(json.promote, false);
 });
