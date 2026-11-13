@@ -70,9 +70,18 @@ For any other family, the target is inherit.
 **Pinned agents.** A pinned agent is any custom agent whose definition has a `model`. The description you see does not show it. Read the definition of a custom agent, in its file or in the configuration, before you use it, in any step, when one of these is true:
 
 - `restricted` is `true` or `null`;
+- `candidates` is an object;
 - the subagent will read files outside the session's project directory.
 
-Do not use the agent when its definition has a `model` on a provider other than the session's, when you cannot find the definition, or when you could not determine the session provider. Spawn the general agent with the same instructions and no model.
+Do not use the agent when its definition has a `model` on a provider other than the session's, and one of these is true:
+
+- `restricted` is `true` or `null`;
+- the subagent will read files outside the session's project directory;
+- `candidates` is an object and does not list the model under any tier. Compare references without the `#variant` part.
+
+Do not use it either when you cannot find the definition, or when you could not determine the session provider. In all these cases, spawn the general agent with the same instructions and no model.
+
+The candidates check covers a provider that the user removed from `routes.json` by hand, after the agent was pinned.
 
 **Limit.** Models are enabled per project, so a reference that works in one repository can be missing in another. The catalogue check covers this.
 
@@ -175,13 +184,15 @@ permissions:
 <the evidence clause from the rubric, word for word>
 ```
 
-The last matching rule wins, so the first entry denies everything and the later ones allow what the row needs. The first entry also denies `external_directory`, so the agent cannot read files outside the project. Do not allow it: that read on another provider breaks core rule 4, and the provider at use time is not known when you write the file. The three `.env` entries restore OpenCode's default of asking before it reads an environment file, which the `read` entry above them would otherwise remove. Keep them. Extra actions to allow by row, each written like the first `read` entry:
+The last matching rule wins, so the first entry denies everything and the later ones allow what the row needs. The first entry also denies `external_directory`. OpenCode then blocks a `read` outside the project, and a shell command that names an outside path when its scanner finds the path. Do not allow it: that read on another provider breaks core rule 4, and the provider at use time is not known when you write the file. The three `.env` entries restore OpenCode's default of asking before it reads an environment file, which the `read` entry above them would otherwise remove. Keep them. Extra actions to allow by row, each written like the first `read` entry unless the table says otherwise:
 
 | Row | Also allow |
 |---|---|
 | `locate`, `extract`, `checklist`, `charter-critic`, `explain` | nothing |
-| `run-and-report` | `shell` |
+| `run-and-report` | one `shell` entry for each command that the current batch ran, with the resource `<command> *`, for example `npm test *`. Never `*`. |
 | `retrieve` | `webfetch`, `websearch` |
+
+OpenCode has no filesystem sandbox for shell. The `external_directory` deny does not confine a command after it starts, so a project script can still read any file the user can read, and its output goes to the pinned provider. The short command list keeps that risk to the scripts that the batch already ran. Tell the user about it when you show the draft of a `run-and-report` agent with a `model` on another provider.
 
 If the shape needs an MCP tool, add an allow entry for it. Its action is `<server>_<tool>`.
 

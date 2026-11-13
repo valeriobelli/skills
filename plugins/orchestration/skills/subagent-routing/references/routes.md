@@ -57,6 +57,7 @@ In Claude Code there is nothing to set up: say so and stop. The steps below are 
 5. If a reference you propose has a price of zero, say so. Free models often log prompts or train on them.
 6. Show the proposed file. Write it only after the user approves.
 7. Run `context --provider <session provider>` again. If `routesStatus` is not `ok`, show `routesProblem` and fix the file with the user. If the current project is one the user restricted, confirm that `restricted` is `true`.
+8. Recommend this rule in the global OpenCode configuration, `~/.config/opencode/opencode.json(c)`: `{ "action": "external_directory", "resource": "*", "effect": "ask" }`. By default OpenCode lets a subagent read outside the project with no prompt, also when nobody told it to. The skill cannot see that read, so core rule 4 cannot stop it. The rule makes OpenCode ask first, for every agent. Show the edit and write it only after the user approves. Put it before any `external_directory` rule that the user already has, so that their own rules still win.
 
 Never add a provider the user did not name.
 
