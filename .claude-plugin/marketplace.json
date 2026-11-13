@@ -9,6 +9,19 @@
   },
   "plugins": [
     {
+      "name": "orchestration",
+      "description": "Delegation skills. Includes subagent-routing, which chooses the model for a subagent at the moment of delegation and turns recurring delegations into pinned agents.",
+      "source": "./plugins/orchestration",
+      "strict": false,
+      "version": "0.1.0",
+      "keywords": [
+        "subagents",
+        "delegation",
+        "models",
+        "orchestration"
+      ]
+    },
+    {
       "name": "reasoning",
       "description": "Planning and decision-quality skills. Includes council, an adversarial multi-agent debate skill that stress-tests high-stakes plans.",
       "source": "./plugins/reasoning",

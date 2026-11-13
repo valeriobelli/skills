@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "tiers": {
+    "small": ["example-missing/none-1"]
+  },
+  "sameProviderOnly": []
+}

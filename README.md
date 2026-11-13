@@ -13,6 +13,7 @@ A *skill* is a folder with a `SKILL.md` — YAML frontmatter plus Markdown instr
 | [`human-style-writing`](plugins/writing/skills/human-style-writing/SKILL.md) | `writing` | Rewrites or generates prose (Italian & English) without LLM tics. Activates only on explicit request ("make this sound human", "de-llmify this"). |
 | [`simplified-technical-english`](plugins/writing/skills/simplified-technical-english/SKILL.md) | `writing` | Rewrite the technical english using ASD-STE100 (Simplified Technical English) for a better human comprehension. |
 | [`stakeholder-summary`](plugins/writing/skills/stakeholder-summary/SKILL.md) | `writing` | Turns technical work into a short summary for a non-engineering reader — a ticket, release note, changelog entry, or status update. |
+| [`subagent-routing`](plugins/orchestration/skills/subagent-routing/SKILL.md) | `orchestration` | Chooses the model for a subagent at the moment of delegation — cheaper only for task shapes known to be safe — and turns delegations that keep recurring into pinned agents. |
 
 ## Install
 
@@ -38,12 +39,13 @@ gh skill install valeriobelli/skills council
 
 ### Claude Code plugin marketplace
 
-Installs a themed bundle with `/plugin` — `reasoning` (`council`, `decompose`) or `writing` (`human-style-writing`, `stakeholder-summary`):
+Installs a themed bundle with `/plugin` — `reasoning` (`council`, `decompose`), `writing` (`human-style-writing`, `simplified-technical-english`, `stakeholder-summary`) or `orchestration` (`subagent-routing`):
 
 ```
 /plugin marketplace add valeriobelli/skills
 /plugin install reasoning
 /plugin install writing
+/plugin install orchestration
 ```
 
 ### git clone + symlink (tool-agnostic fallback)
@@ -62,6 +64,34 @@ ln -s ~/src/skills/plugins/reasoning/skills/council ~/.agents/skills/council   #
 | OpenCode | Reads `~/.claude/skills` and `~/.agents/skills` natively; install via `npx skills` or symlink |
 | Codex / Gemini / Cursor | `npx skills` installs into each tool's skills dir |
 | GitHub Copilot | `npx skills` / `gh skill` translate `SKILL.md` into Copilot's `.github/` prompt-file layout on install. Copilot has no native `SKILL.md` loader — support is **installer-translated, not native**. |
+
+## Skill setup
+
+Most skills need no setup. `subagent-routing` has a helper script and two files of its own.
+
+### `subagent-routing`
+
+- **Node.** The helper script needs Node 20 or later. Without Node the skill still chooses models, but it cannot keep its ledger.
+- **Claude Code.** The first time the skill runs its script, Claude Code asks for permission. Answer "Yes, and don't ask again", which is saved for the current repository, or add an allow rule with the script's full path to your user settings: `Bash(node /full/path/to/subagent-routing/scripts/routing.mjs *)`. For a marketplace install the path contains the plugin's version, so the rule needs updating when the plugin updates. A headless run cannot answer a prompt: without the rule the script is refused, and the skill still chooses models but keeps no ledger.
+- **OpenCode.** Nothing to configure by default: OpenCode allows shell commands unless you told it to ask. If your configuration asks before shell commands, add an allow rule for the script after that rule, with the script's full path:
+
+  ```jsonc
+  {
+    "permissions": [
+      { "action": "shell", "resource": "*", "effect": "ask" },
+      { "action": "shell", "resource": "node /full/path/to/subagent-routing/scripts/routing.mjs *", "effect": "allow" }
+    ]
+  }
+  ```
+
+- **Other providers (OpenCode).** By default a subagent stays on the session's provider. To allow others, say "set up subagent routing". The skill writes `~/.config/subagent-routing/routes.json` after you approve its content.
+- **Always on.** A skill loads when the agent judges it relevant, which is not every time. For reliable use, add this line to your `AGENTS.md` or `CLAUDE.md`:
+
+  ```
+  Before spawning a subagent, load the `subagent-routing` skill.
+  ```
+
+- **Ledger.** Delegations are counted in `~/.local/state/subagent-routing/ledger.jsonl`. Each entry holds the project's path, the shape, the model, and a one-line general description of the delegation. It never holds the prompt. Delete the file to reset the counts.
 
 ## Repository layout
 
@@ -85,7 +115,7 @@ Run this once per clone, before your first commit:
 make prepare-repo
 ```
 
-It points git's `core.hooksPath` at [`.githooks/`](.githooks), whose `pre-commit` hook runs `make validate` — `claude plugin validate .` plus `npx skills add . --list` — so a malformed `SKILL.md` or plugin manifest is caught before it becomes a commit. That's stricter than CI, which can only run the `npx skills` half (no `claude` CLI on the runner).
+It points git's `core.hooksPath` at [`.githooks/`](.githooks), whose `pre-commit` hook runs `make validate` — the unit tests for bundled scripts (`make test`), `claude plugin validate .` and `npx skills add . --list` — so a failing script test or a malformed `SKILL.md` or plugin manifest is caught before it becomes a commit. That's stricter than CI, which runs the unit tests and the `npx skills` check but not `claude plugin validate` (no `claude` CLI on the runner).
 
 `core.hooksPath` is local git config and is never carried over by `git clone`, so every contributor and every fresh clone needs the command again. You can still run `make validate` on its own at any time, and `git commit --no-verify` bypasses the hook when you deliberately want to commit work in progress.
 

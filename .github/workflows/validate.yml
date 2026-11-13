@@ -15,6 +15,9 @@ jobs:
         with:
           node-version-file: .node-version
 
+      - name: Script unit tests
+        run: make test
+
       # Confirm skills are still discoverable with descriptions across CLI agents.
       - name: Skills discoverable via npx skills
         run: npx --yes skills@1.5.22 add . --list

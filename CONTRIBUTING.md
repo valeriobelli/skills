@@ -2,7 +2,7 @@
 
 ## Add a skill
 
-1. Pick the bundle it belongs to — `reasoning`, `writing`, or [a new one](#add-a-themed-plugin-bundle) — and copy the scaffold into it:
+1. Pick the bundle it belongs to — `orchestration`, `reasoning`, `writing`, or [a new one](#add-a-themed-plugin-bundle) — and copy the scaffold into it:
 
    ```bash
    cp -r templates/skill-template plugins/<bundle>/skills/<your-skill-name>
@@ -13,6 +13,7 @@
    - `SKILL.md` (uppercase, exactly) with `---`-delimited YAML frontmatter, **no whitespace before the opening `---`**.
    - **Required** frontmatter: `name`, `description`.
    - **Optional** (safe everywhere; unknown keys are ignored): `version`, `author`, `tags`, `license`, `metadata`.
+   - **`allowed-tools`** (optional, Claude Code only): pre-approves the listed tools for the turn that loads the skill. Avoid it. Claude Code then asks the user before it loads the skill, and refuses to load it in a headless run. Other tools ignore it.
    - `description` is the trigger the agent reads to decide relevance — say *when to use* and *when not to*, not how it works internally. Keep it under ~1024 chars.
 
 3. **Progressive disclosure** — keep `SKILL.md` lean. Push long material into sibling dirs the agent loads only when needed:
@@ -40,12 +41,13 @@ Keep `version` **identical** in both. At install time `plugin.json` wins and the
 ## Validate before committing
 
 ```bash
-make validate          # runs both checks below
+make validate          # runs the three checks below
 ```
 
 or individually:
 
 ```bash
+make test                  # unit tests for scripts bundled with skills; fails on Node 20, CI uses .node-version
 claude plugin validate .   # marketplace + plugin.json + skill schema
 npx skills add . --list    # confirm skills are discovered with descriptions
 ```
